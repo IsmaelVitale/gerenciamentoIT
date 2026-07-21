@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Setores - Admin TI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 10px; }
+        .tab-active { background-color: #1e293b; color: white; border-left: 4px solid #3b82f6; }
+        .tab-inactive { color: #94a3b8; border-left: 4px solid transparent; }
+        .tab-inactive:hover { background-color: #1e293b; color: white; }
+        @keyframes pulse-red { 0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); } 50% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); } }
+        .scanner-ring-lock { animation: pulse-red 2s infinite; }
+        .fade-enter { opacity: 0; transform: translateY(10px); animation: fadeIn 0.3s forwards; }
+        @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
+        @media (min-width: 768px) { #sidebar.sidebar-collapsed { width: 5rem !important; } #sidebar.sidebar-collapsed .sidebar-text { display: none !important; } }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 h-screen flex font-sans overflow-hidden">
+
+<div id="toast-container" class="fixed top-10 right-4 z-[9999] flex flex-col gap-2"></div>
+
+<!-- LOCK SCREEN DE SEGURANÇA -->
+<div id="security-overlay" class="absolute inset-0 bg-slate-900 z-[100] flex flex-col items-center justify-center">
+    <div class="bg-white p-10 rounded-2xl shadow-2xl text-center max-w-md w-full relative overflow-hidden">
+        <div class="absolute top-0 left-0 w-full h-2 bg-red-600"></div>
+        <div class="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6 scanner-ring-lock">
+            <i class="ph ph-shield-warning text-4xl text-red-600"></i>
+        </div>
+        <h2 class="text-2xl font-bold text-slate-800 mb-2">Acesso Restrito</h2>
+        <div class="relative">
+            <i class="ph ph-barcode absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 text-xl"></i>
+            <input type="password" id="login-scanner" autofocus class="w-full pl-12 pr-4 py-4 border-2 border-slate-300 rounded-xl text-center text-xl font-bold tracking-widest text-slate-900 focus:outline-none focus:ring-4 focus:ring-red-100 bg-slate-50" placeholder="Bipe o Crachá...">
+        </div>
+    </div>
+</div>
+
+<div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/50 z-30 hidden md:hidden transition-opacity"></div>
+
+<aside id="sidebar" class="bg-slate-900 text-slate-300 flex flex-col h-full shadow-2xl z-40 flex-shrink-0 transition-all duration-300 fixed md:relative w-64 -translate-x-full md:translate-x-0 overflow-hidden">
+    <div class="p-4 bg-slate-950 border-b border-slate-800 flex items-center gap-3 shrink-0">
+        <i class="ph ph-shield-check text-blue-500 text-3xl"></i>
+        <div class="sidebar-text whitespace-nowrap"><h1 class="text-white font-bold text-lg leading-tight">Admin TI</h1><p class="text-xs text-slate-400">ID Logistics</p></div>
+    </div>
+    <nav class="flex-grow py-4 flex flex-col gap-1 overflow-y-auto">
+        <a href="chamados.html" class="text-slate-400 hover:bg-slate-800 hover:text-white flex items-center gap-3 px-6 py-3 w-full transition-colors font-medium"><i class="ph ph-ticket text-xl shrink-0"></i> <span class="sidebar-text">Chamados</span></a>
+        <a href="equipamentos.html" class="text-slate-400 hover:bg-slate-800 hover:text-white flex items-center gap-3 px-6 py-3 w-full transition-colors font-medium"><i class="ph ph-devices text-xl shrink-0"></i> <span class="sidebar-text">Gest. Equipamentos</span></a>
+        <a href="usuarios.html" class="text-slate-400 hover:bg-slate-800 hover:text-white flex items-center gap-3 px-6 py-3 w-full transition-colors font-medium"><i class="ph ph-users text-xl shrink-0"></i> <span class="sidebar-text">Gestão de Usuários</span></a>
+        <a href="setores.html" class="bg-slate-800 text-white border-l-4 border-blue-500 flex items-center gap-3 px-6 py-3 w-full transition-colors font-medium"><i class="ph ph-buildings text-xl shrink-0"></i> <span class="sidebar-text">Gestão de Setores</span></a>
+    </nav>
+</aside>
+
+<main class="flex-grow flex flex-col h-full bg-slate-50 relative overflow-hidden min-w-0">
+    <header class="bg-white p-4 shadow-sm flex justify-between items-center gap-4 z-10 shrink-0">
+        <div class="flex items-center gap-4">
+            <button onclick="toggleSidebar()" class="text-slate-500 hover:text-blue-600 focus:outline-none"><i class="ph ph-list text-2xl"></i></button>
+            <h2 class="text-xl font-bold text-slate-800 truncate">Configuração de Setores e Cotas</h2>
+        </div>
+    </header>
+
+    <div class="flex-grow overflow-auto p-4 md:p-6 relative flex flex-col space-y-4">
+
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between md:items-center gap-4">
+            <p class="text-sm text-slate-500 font-medium">Defina a capacidade máxima de equipamentos por operação ou cadastre setores administrativos (T.I., RH).</p>
+            <button onclick="abrirModalCRUD()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2">
+                <i class="ph ph-plus text-lg"></i> Novo Setor
+            </button>
+        </div>
+
+        <!-- Tabela -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-grow flex flex-col fade-enter">
+            <div class="overflow-x-auto flex-grow">
+                <table class="w-full text-left border-collapse min-w-[600px]">
+                    <thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200 sticky top-0 z-10">
+                    <tr>
+                        <th class="p-4 font-semibold">Nome da Operação</th>
+                        <th class="p-4 font-semibold">Tipo do Setor</th>
+                        <th class="p-4 font-semibold">Cota Definida</th>
+                        <th class="p-4 font-semibold">Líderes Associados</th>
+                        <th class="p-4 font-semibold text-right">Ações</th>
+                    </tr>
+                    </thead>
+                    <tbody id="tbody-setores" class="text-sm divide-y divide-slate-100"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- MODAL CRUD SETOR -->
+<div id="modal-crud" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex-col items-center justify-center backdrop-blur-sm">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div class="p-5 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+            <h3 id="modal-title" class="font-bold text-slate-800 text-lg flex items-center gap-2"><i class="ph ph-buildings text-blue-600"></i> Setor</h3>
+            <button onclick="fecharModalCRUD()" class="text-slate-400 hover:text-red-500"><i class="ph ph-x text-2xl"></i></button>
+        </div>
+        <form onsubmit="salvarSetor(event)" class="p-6 space-y-4">
+            <input type="hidden" id="form-id">
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Nome do Setor</label>
+                <input type="text" id="form-nome" required class="w-full border border-slate-300 rounded-lg p-2.5 text-sm uppercase font-bold focus:ring-2 focus:ring-blue-500 outline-none">
+            </div>
+
+            <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                <div class="flex items-center gap-2 mb-3">
+                    <input type="checkbox" id="form-admin" class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 cursor-pointer" onchange="toggleCota()">
+                    <label for="form-admin" class="text-sm font-bold text-slate-700 cursor-pointer select-none">Setor Administrativo (Ex: T.I., RH)</label>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Cota Máxima (Operação)</label>
+                    <input type="number" id="form-cota" required min="0" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-colors" value="10">
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3 pt-4 border-t border-slate-100">
+                <button type="button" onclick="fecharModalCRUD()" class="px-4 py-2 text-slate-600 font-bold hover:bg-slate-100 rounded-lg">Cancelar</button>
+                <button type="submit" id="btn-save" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-md">Salvar Setor</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="js/admin-core.js"></script>
+<script>
+    let setoresList = [];
+    let usuariosList = [];
+
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('-translate-x-full');
+        document.getElementById('sidebar-overlay').classList.toggle('hidden');
+    }
+
+    if (typeof API_BASE_URL === 'undefined') { window.API_BASE_URL = 'http://localhost:8080/api'; setTimeout(initPage, 500); }
+    document.addEventListener('AdminSessionValid', initPage);
+
+    async function initPage() {
+        await carregarUsuarios();
+        await carregarSetores();
+    }
+
+    async function carregarUsuarios() {
+        const url = typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : window.API_BASE_URL;
+        try {
+            const res = await fetch(`${url}/usuarios`);
+            if(res.ok) usuariosList = await res.json();
+        } catch(e) {}
+    }
+
+    async function carregarSetores() {
+        const url = typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : window.API_BASE_URL;
+        try {
+            const res = await fetch(`${url}/setores`);
+            if(!res.ok) throw new Error();
+            setoresList = await res.json();
+            renderTabela();
+        } catch(e) {
+            document.getElementById('tbody-setores').innerHTML = '<tr><td colspan="5" class="p-8 text-center text-red-500">Erro ao carregar a API de Setores.</td></tr>';
+        }
+    }
+
+    function renderTabela() {
+        const tbody = document.getElementById('tbody-setores');
+        tbody.innerHTML = '';
+        if(setoresList.length === 0) { tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-slate-500">Nenhum setor configurado.</td></tr>'; return; }
+
+        setoresList.forEach(s => {
+            const lideresDoSetor = usuariosList.filter(u => u.role === 'LIDER' && u.setores && u.setores.includes(s.nome));
+            const lideresHtml = lideresDoSetor.length > 0
+                ? lideresDoSetor.map(l => `<span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded inline-block mr-1 mb-1">${l.nome.split(' ')[0]}</span>`).join('')
+                : '<span class="text-xs text-slate-400 italic">Sem Líder</span>';
+
+            const tipoSetor = s.administrativo
+                ? '<span class="text-purple-600 bg-purple-50 px-2 py-1 rounded font-bold text-[10px] uppercase border border-purple-200">Administrativo</span>'
+                : '<span class="text-green-600 bg-green-50 px-2 py-1 rounded font-bold text-[10px] uppercase border border-green-200">Operação</span>';
+
+            const cotaHtml = s.administrativo ? `<span class="text-slate-400 font-medium">Ilimitado</span>` : `<span class="font-mono font-bold text-blue-600">${s.cota} PDAs</span>`;
+
+            tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50 border-b border-slate-100">
+                        <td class="p-4 font-bold text-slate-700">${s.nome}</td>
+                        <td class="p-4">${tipoSetor}</td>
+                        <td class="p-4">${cotaHtml}</td>
+                        <td class="p-4">${lideresHtml}</td>
+                        <td class="p-4 text-right">
+                            <button onclick="editarSetor(${s.id})" class="p-2 text-slate-400 hover:text-blue-600 bg-slate-50 rounded"><i class="ph ph-pencil-simple text-lg"></i></button>
+                            <button onclick="excluirSetor(${s.id}, '${s.nome}')" class="p-2 text-slate-400 hover:text-red-600 bg-slate-50 rounded ml-1"><i class="ph ph-trash text-lg"></i></button>
+                        </td>
+                    </tr>
+                `;
+        });
+    }
+
+    // --- LÓGICA DO SETOR ADMINISTRATIVO ---
+    function toggleCota() {
+        const isAdmin = document.getElementById('form-admin').checked;
+        const cotaInput = document.getElementById('form-cota');
+
+        if(isAdmin) {
+            cotaInput.value = 0;
+            cotaInput.disabled = true;
+            cotaInput.classList.add('bg-slate-200', 'text-slate-500');
+        } else {
+            cotaInput.disabled = false;
+            cotaInput.classList.remove('bg-slate-200', 'text-slate-500');
+            if(cotaInput.value == 0) cotaInput.value = 10;
+        }
+    }
+
+    // --- CRUD ---
+    function abrirModalCRUD() {
+        document.getElementById('form-id').value = '';
+        document.getElementById('form-nome').value = '';
+        document.getElementById('form-nome').readOnly = false;
+        document.getElementById('form-cota').value = '10';
+        document.getElementById('form-admin').checked = false;
+        toggleCota();
+
+        document.getElementById('modal-title').innerHTML = '<i class="ph ph-buildings text-blue-600"></i> Novo Setor';
+        document.getElementById('modal-crud').classList.replace('hidden', 'flex');
+    }
+
+    function editarSetor(id) {
+        const s = setoresList.find(x => x.id === id);
+        if(!s) return;
+        document.getElementById('form-id').value = s.id;
+        document.getElementById('form-nome').value = s.nome;
+        document.getElementById('form-nome').readOnly = true;
+        document.getElementById('form-cota').value = s.cota;
+        document.getElementById('form-admin').checked = s.administrativo || false;
+        toggleCota();
+
+        document.getElementById('modal-title').innerHTML = '<i class="ph ph-pencil-simple text-blue-600"></i> Editar Setor';
+        document.getElementById('modal-crud').classList.replace('hidden', 'flex');
+    }
+
+    function fecharModalCRUD() { document.getElementById('modal-crud').classList.replace('flex', 'hidden'); }
+
+    async function salvarSetor(e) {
+        e.preventDefault();
+        const id = document.getElementById('form-id').value;
+        const btn = document.getElementById('btn-save');
+
+        const isAdmin = document.getElementById('form-admin').checked;
+        const payload = {
+            nome: document.getElementById('form-nome').value.trim().toUpperCase(),
+            cota: isAdmin ? 0 : parseInt(document.getElementById('form-cota').value),
+            administrativo: isAdmin
+        };
+
+        const url = typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : window.API_BASE_URL;
+        try {
+            btn.disabled = true; btn.innerHTML = `<i class="ph ph-spinner animate-spin"></i>`;
+            const res = await fetch(id ? `${url}/setores/${id}` : `${url}/setores`, { method: id?'PUT':'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
+            if(!res.ok) throw new Error((await res.json()).erro || "Erro de API.");
+            showToast(`Setor salvo com sucesso!`, 'success');
+            fecharModalCRUD(); carregarSetores();
+        } catch(error) { alert(error.message); }
+        finally { btn.disabled = false; btn.innerHTML = `Salvar Setor`; }
+    }
+
+    async function excluirSetor(id, nome) {
+        if(!confirm(`Tem certeza que deseja excluir o setor ${nome}?`)) return;
+        const url = typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : window.API_BASE_URL;
+        try {
+            const res = await fetch(`${url}/setores/${id}`, { method: 'DELETE' });
+            if(!res.ok) throw new Error("Erro ao excluir.");
+            showToast(`Setor excluído.`, 'success'); carregarSetores();
+        } catch(e) { alert(e.message); }
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Equipamentos - Admin TI</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 10px; }
+
+        .tab-active { background-color: #1e293b; color: white; border-left: 4px solid #3b82f6; }
+        .tab-inactive { color: #94a3b8; border-left: 4px solid transparent; }
+        .tab-inactive:hover { background-color: #1e293b; color: white; }
+
+        @keyframes pulse-red {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            50% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
+        }
+        .scanner-ring-lock { animation: pulse-red 2s infinite; }
+
+        .fade-enter { opacity: 0; transform: translateY(10px); animation: fadeIn 0.3s forwards; }
+        @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
+
+        @media (min-width: 768px) {
+            #sidebar.sidebar-collapsed { width: 5rem !important; }
+            #sidebar.sidebar-collapsed .sidebar-text { display: none !important; }
+        }
+
+        .sort-icon { display: inline-block; width: 16px; text-align: center; }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 h-screen flex font-sans overflow-hidden">
+
+<!-- Contentor de Alertas (Toast) -->
+<div id="toast-container" class="fixed top-10 right-4 z-[9999] flex flex-col gap-2"></div>
+
+<!-- ========================================== -->
+<!-- TELA DE BLOQUEIO DE SEGURANÇA (LOCK SCREEN)-->
+<!-- ========================================== -->
+<div id="security-overlay" class="absolute inset-0 bg-slate-900 z-[100] flex flex-col items-center justify-center">
+    <div class="bg-white p-10 rounded-2xl shadow-2xl text-center max-w-md w-full relative overflow-hidden">
+        <div class="absolute top-0 left-0 w-full h-2 bg-red-600"></div>
+
+        <div class="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6 scanner-ring-lock">
+            <i class="ph ph-shield-warning text-4xl text-red-600"></i>
+        </div>
+
+        <h2 class="text-2xl font-bold text-slate-800 mb-2">Acesso Restrito</h2>
+        <div class="relative">
+            <i class="ph ph-barcode absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 text-xl"></i>
+            <input type="password" id="login-scanner" autofocus class="w-full pl-12 pr-4 py-4 border-2 border-slate-300 rounded-xl text-center text-xl font-bold tracking-widest text-slate-900 focus:outline-none focus:ring-4 focus:ring-red-100 bg-slate-50" placeholder="Bipe o Crachá...">
+        </div>
+    </div>
+</div>
+
+<!-- Overlay para Menu Mobile -->
+<div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/50 z-30 hidden md:hidden transition-opacity"></div>
+
+<!-- ========================================== -->
+<!-- MENU LATERAL (SIDEBAR)                     -->
+<!-- ========================================== -->
+<aside id="sidebar" class="bg-slate-900 text-slate-300 flex flex-col h-full shadow-2xl z-40 flex-shrink-0 w-64 transition-transform duration-300 relative hidden md:flex">
+    <div class="p-4 bg-slate-950 border-b border-slate-800 flex items-center gap-3 shrink-0">
+        <i class="ph ph-shield-check text-blue-500 text-3xl"></i>
+        <div>
+            <h1 class="text-white font-bold text-lg leading-tight">Admin TI</h1>
+            <p class="text-xs text-slate-400">ID Logistics</p>
+        </div>
+    </div>
+
+    <!-- MENU ATUALIZADO (Sincronizado com chamados.html) -->
+    <nav class="flex-grow py-4 flex flex-col gap-1 overflow-y-auto overflow-x-hidden">
+        <a href="chamados.html" class="nav-item text-slate-400 hover:bg-slate-800 hover:text-white border-l-4 border-transparent flex items-center justify-between px-6 py-3 w-full text-left transition-colors font-medium whitespace-nowrap">
+            <div class="flex items-center gap-3"><i class="ph ph-ticket text-xl shrink-0"></i> <span class="sidebar-text">Chamados</span></div>
+        </a>
+        <a href="inventario.html" class="nav-item text-slate-400 hover:bg-slate-800 hover:text-white border-l-4 border-transparent flex items-center gap-3 px-6 py-3 w-full text-left transition-colors font-medium whitespace-nowrap">
+            <i class="ph ph-list-dashes text-xl shrink-0"></i> <span class="sidebar-text">Inventário</span>
+        </a>
+        <a href="historico.html" class="nav-item text-slate-400 hover:bg-slate-800 hover:text-white border-l-4 border-transparent flex items-center gap-3 px-6 py-3 w-full text-left transition-colors font-medium whitespace-nowrap">
+            <i class="ph ph-clock-counter-clockwise text-xl shrink-0"></i> <span class="sidebar-text">Histórico</span>
+        </a>
+        <a href="usuarios.html" class="nav-item text-slate-400 hover:bg-slate-800 hover:text-white border-l-4 border-transparent flex items-center gap-3 px-6 py-3 w-full text-left transition-colors font-medium whitespace-nowrap">
+            <i class="ph ph-users text-xl shrink-0"></i> <span class="sidebar-text">Gestão de Usuários</span>
+        </a>
+        <a href="setores.html" class="nav-item text-slate-400 hover:bg-slate-800 hover:text-white border-l-4 border-transparent flex items-center gap-3 px-6 py-3 w-full text-left transition-colors font-medium whitespace-nowrap">
+            <i class="ph ph-buildings text-xl shrink-0"></i> <span class="sidebar-text">Gestão de Setores</span>
+        </a>
+        <a href="equipamentos.html" class="nav-item bg-slate-800 text-white border-l-4 border-blue-500 flex items-center gap-3 px-6 py-3 w-full text-left transition-colors font-medium whitespace-nowrap">
+            <i class="ph ph-devices text-xl shrink-0"></i> <span class="sidebar-text">Gest. Equipamentos</span>
+        </a>
+        <a href="impressao.html" class="nav-item text-slate-400 hover:bg-slate-800 hover:text-white border-l-4 border-transparent flex items-center gap-3 px-6 py-3 w-full text-left transition-colors font-medium whitespace-nowrap">
+            <i class="ph ph-printer text-xl shrink-0"></i> <span class="sidebar-text">Impressão Livre</span>
+        </a>
+    </nav>
+
+    <div class="sidebar-header p-4 border-t border-slate-800 shrink-0 flex flex-col gap-2">
+        <button onclick="efetuarLogout()" title="Encerrar Sessão" class="nav-item flex items-center gap-3 text-slate-400 hover:text-red-400 transition-colors w-full whitespace-nowrap">
+            <i class="ph ph-sign-out text-xl shrink-0"></i> <span class="sidebar-text">Encerrar Sessão</span>
+        </button>
+    </div>
+</aside>
+
+<!-- ========================================== -->
+<!-- ÁREA PRINCIPAL                             -->
+<!-- ========================================== -->
+<main class="flex-grow flex flex-col h-full bg-slate-50 relative overflow-hidden min-w-0">
+
+    <header class="bg-white p-4 shadow-sm flex justify-between items-center gap-4 z-10 shrink-0">
+        <div class="flex items-center gap-4">
+            <button onclick="toggleSidebar()" class="text-slate-500 hover:text-blue-600 focus:outline-none md:hidden">
+                <i class="ph ph-list text-2xl"></i>
+            </button>
+            <h2 class="text-xl font-bold text-slate-800 truncate pl-4">Gestão Global de Ativos Físicos</h2>
+        </div>
+        <div class="relative w-64 hidden sm:block">
+            <i class="ph ph-magnifying-glass absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
+            <input type="text" id="search-input" oninput="filtrarTabela()" placeholder="Buscar patrimônio..." class="pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 w-full bg-slate-50 font-mono focus:bg-white transition-colors outline-none">
+        </div>
+    </header>
+
+    <div class="flex-grow overflow-auto p-4 md:p-6 relative flex flex-col space-y-4">
+
+        <!-- Barra de Ferramentas e Ações -->
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col lg:flex-row justify-between lg:items-center gap-4">
+
+            <div class="flex flex-wrap items-center gap-3">
+                <button onclick="abrirModalCRUD()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors">
+                    <i class="ph ph-plus text-lg"></i> Cadastrar PDA
+                </button>
+                <button onclick="abrirModalCriacaoLote()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors">
+                    <i class="ph ph-devices text-lg"></i> Cadastrar Lote
+                </button>
+                <div class="w-px h-6 bg-slate-300 mx-1"></div>
+                <button onclick="abrirModalBipagemMassiva()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors">
+                    <i class="ph ph-arrows-left-right text-lg"></i> Atualizar Status
+                </button>
+            </div>
+
+            <!-- Ações em Massa (Via Checkbox) -->
+            <div id="bulk-actions-bar" class="hidden items-center gap-3 bg-blue-50 border border-blue-200 px-4 py-2 rounded-lg shadow-inner w-full md:w-auto mt-2 md:mt-0">
+                <span class="text-sm font-bold text-blue-800 whitespace-nowrap"><span id="bulk-count">0</span> selec.</span>
+                <div class="h-4 w-px bg-blue-300"></div>
+
+                <select id="bulk-action-type" onchange="verificarTipoAcaoMassa()" class="border border-blue-300 rounded text-sm p-1.5 bg-white text-blue-900 font-bold outline-none cursor-pointer">
+                    <option value="SETOR">Mover para Setor...</option>
+                    <option value="STATUS">Alterar Status Físico...</option>
+                    <option value="DELETAR" class="text-red-600 font-bold">Excluir Lote</option>
+                </select>
+
+                <select id="bulk-setor-select" class="border border-blue-300 rounded text-sm p-1.5 bg-white text-blue-900 font-medium w-40 outline-none cursor-pointer">
+                    <!-- Preenchido via JS -->
+                </select>
+
+                <select id="bulk-status-select" class="hidden border border-blue-300 rounded text-sm p-1.5 bg-white text-blue-900 font-medium w-40 outline-none cursor-pointer">
+                    <option value="" disabled selected>Escolha o Status...</option>
+                    <option value="ESTOQUE_TI">Estoque T.I. (Livre)</option>
+                    <option value="ESTOQUE_SETOR">Alocado Setor (Armário)</option>
+                    <option value="EM_USO">Em Uso (Operação)</option>
+                    <option value="MANUTENCAO">Em Manutenção</option>
+                </select>
+
+                <button id="btn-aplicar-bulk" onclick="aplicarAcaoMassa()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded text-sm font-bold shadow-sm flex items-center gap-2 transition-transform active:scale-95">
+                    <i class="ph ph-check"></i> Aplicar
+                </button>
+            </div>
+        </div>
+
+        <!-- Tabela de Equipamentos -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-grow flex flex-col fade-enter">
+            <div class="overflow-x-auto flex-grow">
+                <table class="w-full text-left border-collapse min-w-[800px]">
+                    <thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200 sticky top-0 z-10">
+                    <tr>
+                        <th class="p-4 w-12 text-center">
+                            <input type="checkbox" id="check-all" onchange="toggleAllCheckboxes()" class="w-4 h-4 rounded border-slate-300 text-blue-600 cursor-pointer focus:ring-blue-500">
+                        </th>
+                        <th onclick="ordenarTabela('patrimonio')" class="p-4 font-semibold cursor-pointer hover:bg-slate-200 transition-colors group select-none">
+                            Patrimônio <span class="sort-icon" id="sort-patrimonio"></span>
+                        </th>
+                        <th onclick="ordenarTabela('modelo')" class="p-4 font-semibold cursor-pointer hover:bg-slate-200 transition-colors group select-none">
+                            Modelo <span class="sort-icon" id="sort-modelo"></span>
+                        </th>
+                        <th onclick="ordenarTabela('status')" class="p-4 font-semibold cursor-pointer hover:bg-slate-200 transition-colors group select-none">
+                            Status / Local <span class="sort-icon" id="sort-status"></span>
+                        </th>
+                        <th onclick="ordenarTabela('setorAlocado')" class="p-4 font-semibold cursor-pointer hover:bg-slate-200 transition-colors group select-none">
+                            Setor Alocado <span class="sort-icon" id="sort-setorAlocado"></span>
+                        </th>
+                        <th class="p-4 font-semibold text-right">Ações</th>
+                    </tr>
+                    </thead>
+                    <tbody id="tbody-pdas" class="text-sm divide-y divide-slate-100">
+                    <!-- Preenchido via JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- ========================================== -->
+<!-- MODAIS E POP-UPS                           -->
+<!-- ========================================== -->
+
+<!-- MODAL: CADASTRO EM LOTE DE PDAs -->
+<div id="modal-criacao-lote" class="fixed inset-0 bg-slate-900/70 z-50 hidden flex-col items-center justify-center backdrop-blur-sm p-4 transition-opacity">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl flex flex-col h-[700px] max-h-full overflow-hidden transform transition-all">
+
+        <div class="p-5 border-b border-slate-200 bg-emerald-50 flex justify-between items-center shrink-0">
+            <h3 class="font-bold text-emerald-800 text-lg flex items-center gap-2">
+                <i class="ph ph-devices text-2xl"></i> Cadastro em Lote de PDAs
+            </h3>
+            <button onclick="fecharModalCriacaoLote()" class="text-emerald-400 hover:text-red-500 transition-colors">
+                <i class="ph ph-x text-2xl"></i>
+            </button>
+        </div>
+
+        <!-- Configuração Base do Lote -->
+        <div class="p-5 bg-slate-50 shrink-0 border-b border-slate-200 flex flex-wrap gap-4 items-end">
+            <div class="w-48">
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Modelo Base</label>
+                <input type="text" id="lote-pda-modelo" class="w-full border border-slate-300 rounded p-2 text-sm focus:ring-emerald-500 uppercase font-bold outline-none" value="PDA EF550">
+            </div>
+            <div class="w-48">
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Status Base</label>
+                <select id="lote-pda-status" class="w-full border border-slate-300 rounded p-2 text-sm focus:ring-emerald-500 outline-none bg-white">
+                    <option value="ESTOQUE_TI">Estoque T.I. (Livre)</option>
+                    <option value="ESTOQUE_SETOR">Alocado em Setor</option>
+                </select>
+            </div>
+            <div class="flex-grow max-w-xs">
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Setor Destino</label>
+                <select id="lote-pda-setor" class="w-full border border-slate-300 rounded p-2 text-sm focus:ring-emerald-500 outline-none bg-white">
+                    <!-- Preenchido via JavaScript -->
+                </select>
+            </div>
+        </div>
+
+        <div class="flex-grow flex flex-col md:flex-row overflow-hidden">
+            <!-- Área de Input e Scanner -->
+            <div class="w-full md:w-1/3 border-r border-slate-200 p-5 bg-white flex flex-col space-y-4 overflow-y-auto">
+                <div class="bg-blue-50 border border-blue-200 p-4 rounded-xl shadow-sm">
+                    <h4 class="font-bold text-blue-800 mb-3 text-sm flex items-center gap-2">
+                        <i class="ph ph-barcode"></i> Modo Scanner (Direto)
+                    </h4>
+                    <input type="text" id="lote-in-pat" placeholder="Bipe o Patrimônio aqui..." class="w-full mb-2 border-2 border-blue-300 rounded p-3 text-center text-sm font-mono uppercase font-bold focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none shadow-inner transition-colors">
+                    <p class="text-[10px] text-blue-600 text-center">Bipar adiciona automaticamente à fila abaixo.</p>
+                </div>
+
+                <div class="flex items-center gap-2 py-2 opacity-50">
+                    <div class="h-px bg-slate-300 flex-grow"></div>
+                    <span class="text-xs font-bold text-slate-500 uppercase">OU</span>
+                    <div class="h-px bg-slate-300 flex-grow"></div>
+                </div>
+
+                <div class="bg-green-50 border border-green-200 p-4 rounded-xl shadow-sm flex-grow flex flex-col">
+                    <h4 class="font-bold text-green-800 mb-2 text-sm flex items-center gap-2">
+                        <i class="ph ph-file-xls"></i> Colar do Excel
+                    </h4>
+                    <textarea id="lote-excel-area" class="w-full flex-grow border border-green-300 rounded p-2 text-xs font-mono whitespace-pre resize-none focus:ring-2 focus:ring-green-500 outline-none" placeholder="PDA-001\nPDA-002\n..."></textarea>
+                    <button onclick="processarExcelPdas()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 mt-2 rounded text-sm transition-colors shadow">
+                        Importar Linhas
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tabela de Rascunho -->
+            <div class="w-full md:w-2/3 bg-slate-50 flex flex-col overflow-hidden">
+                <div class="p-3 border-b border-slate-200 flex justify-between items-center bg-white shrink-0">
+                    <span class="font-bold text-sm text-slate-600">Fila de Criação: <span id="lote-count" class="text-blue-600">0</span></span>
+                    <button onclick="limparRascunhoLote()" class="text-red-500 text-xs font-bold hover:underline transition-colors">Limpar Tudo</button>
+                </div>
+                <div class="flex-grow overflow-auto p-4">
+                    <table class="w-full text-left bg-white border border-slate-200 rounded shadow-sm">
+                        <thead class="bg-slate-100 text-slate-500 text-[10px] uppercase border-b border-slate-200 sticky top-0">
+                        <tr>
+                            <th class="p-3 font-semibold">Patrimônio</th>
+                            <th class="p-3 text-right font-semibold">Ação</th>
+                        </tr>
+                        </thead>
+                        <tbody id="lote-draft-body" class="text-sm divide-y divide-slate-100">
+                        <!-- Preenchido via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rodapé e Finalização -->
+        <div class="p-4 border-t border-slate-200 bg-white shrink-0 flex justify-between items-center">
+            <span id="lote-status-text" class="text-sm font-bold text-slate-500">Pronto para iniciar.</span>
+            <div class="flex gap-3">
+                <button onclick="fecharModalCriacaoLote()" class="px-5 py-2.5 text-slate-600 font-bold hover:bg-slate-100 rounded-lg transition-colors">Cancelar</button>
+                <button onclick="executarCriacaoLote()" id="btn-executar-lote" class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-md flex items-center gap-2 transition-transform active:scale-95">
+                    <i class="ph ph-check-circle text-lg"></i> Cadastrar Lote
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: ATUALIZACAO MASSIVA (SCANNER E AÇÕES EM LOTE) -->
+<div id="modal-bulk-scan" class="fixed inset-0 bg-slate-900/70 z-50 hidden flex-col items-center justify-center backdrop-blur-sm p-4 transition-opacity">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl flex flex-col h-[600px] max-h-full overflow-hidden transform transition-all">
+
+        <div class="p-5 border-b border-slate-200 bg-purple-50 flex justify-between items-center shrink-0">
+            <h3 class="font-bold text-purple-800 text-lg flex items-center gap-2">
+                <i class="ph ph-barcode text-2xl"></i> Atualização em Lote (Scanner)
+            </h3>
+            <button onclick="fecharModalBipagem()" class="text-purple-400 hover:text-red-500 transition-colors">
+                <i class="ph ph-x text-2xl"></i>
+            </button>
+        </div>
+
+        <div class="p-6 bg-slate-50 shrink-0 border-b border-slate-200">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Ação</label>
+                    <select id="bulk-scan-action" onchange="verificarAcaoScanner()" class="w-full border-2 border-slate-300 rounded-lg p-3 font-bold focus:ring-2 focus:ring-purple-500 outline-none bg-white cursor-pointer">
+                        <option value="SETOR">Mover p/ Setor...</option>
+                        <option value="STATUS">Alterar Status...</option>
+                        <option value="DELETAR" class="text-red-600 font-bold">Excluir Lote</option>
+                    </select>
+                </div>
+
+                <div id="div-scan-setor">
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Destino / Status</label>
+                    <select id="bulk-scan-setor" class="w-full border-2 border-slate-300 rounded-lg p-3 font-bold focus:ring-2 focus:ring-purple-500 outline-none bg-white cursor-pointer">
+                        <!-- Preenchido via JavaScript -->
+                    </select>
+
+                    <select id="bulk-scan-status" class="hidden w-full border-2 border-slate-300 rounded-lg p-3 font-bold focus:ring-2 focus:ring-purple-500 outline-none bg-white cursor-pointer">
+                        <option value="" disabled selected>Escolha o Status...</option>
+                        <option value="ESTOQUE_TI">Estoque T.I. (Livre)</option>
+                        <option value="ESTOQUE_SETOR">Alocado Setor</option>
+                        <option value="EM_USO">Em Uso na Operação</option>
+                        <option value="MANUTENCAO">Manutenção T.I.</option>
+                    </select>
+                </div>
+
+                <div class="flex items-end">
+                    <div class="relative w-full">
+                        <label class="block text-xs font-bold text-purple-600 uppercase mb-1">Bipar Existentes</label>
+                        <input type="text" id="bulk-scanner-input" class="w-full border-2 border-purple-300 rounded-lg p-3 text-center font-mono focus:ring-2 focus:ring-purple-500 outline-none shadow-inner uppercase font-bold" placeholder="PDA-...">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex-grow overflow-auto p-6 bg-white">
+            <div class="flex justify-between items-center mb-3 border-b border-slate-100 pb-2">
+                <p class="text-xs font-bold text-slate-400 uppercase">Máquinas Lidas (<span id="bulk-scan-count" class="text-blue-600">0</span>)</p>
+                <button onclick="document.getElementById('bulk-scan-list').innerHTML=''; pdasBipadas.clear(); atualizaContadorBipagem();" class="text-red-500 font-bold text-xs hover:underline transition-colors">Limpar Fila</button>
+            </div>
+            <ul id="bulk-scan-list" class="space-y-2">
+                <!-- Preenchido via JavaScript -->
+            </ul>
+        </div>
+
+        <div class="p-4 border-t border-slate-200 bg-slate-50 shrink-0 flex justify-end items-center gap-3">
+            <button onclick="fecharModalBipagem()" class="px-5 py-2.5 text-slate-600 font-bold hover:bg-slate-200 rounded-lg transition-colors">Cancelar</button>
+            <button onclick="processarBipagemMassiva()" id="btn-process-bulk" class="px-6 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg shadow-md flex items-center gap-2 transition-transform active:scale-95">
+                <i class="ph ph-check-circle text-lg"></i> Executar Atualização
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: CRUD DE EQUIPAMENTO ÚNICO -->
+<div id="modal-crud" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex-col items-center justify-center backdrop-blur-sm p-4 transition-opacity">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden transform transition-all">
+        <div class="p-5 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+            <h3 id="modal-title" class="font-bold text-slate-800 text-lg flex items-center gap-2">
+                <i class="ph ph-device-mobile text-blue-600 text-2xl"></i> Equipamento
+            </h3>
+            <button onclick="fecharModalCRUD()" class="text-slate-400 hover:text-red-500 transition-colors">
+                <i class="ph ph-x text-2xl"></i>
+            </button>
+        </div>
+        <form onsubmit="salvarPDA(event)" class="p-6 space-y-4">
+            <input type="hidden" id="form-id">
+            <div class="grid grid-cols-2 gap-4">
+                <div class="col-span-2 sm:col-span-1">
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Patrimônio / S.N.</label>
+                    <input type="text" id="form-patrimonio" required class="w-full border border-slate-300 rounded-lg p-2.5 text-sm font-mono font-bold uppercase focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div class="col-span-2 sm:col-span-1">
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Modelo</label>
+                    <input type="text" id="form-modelo" required class="w-full border border-slate-300 rounded-lg p-2.5 text-sm uppercase focus:ring-2 focus:ring-blue-500 outline-none" value="PDA EF550">
+                </div>
+                <div class="col-span-2 sm:col-span-1">
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Status / Situação</label>
+                    <select id="form-status" required class="w-full border border-slate-300 rounded-lg p-2.5 text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                        <option value="ESTOQUE_TI">Estoque T.I. (Livre)</option>
+                        <option value="ESTOQUE_SETOR">Alocado no Setor (Armário)</option>
+                        <option value="EM_USO">Em Uso na Operação</option>
+                        <option value="MANUTENCAO">Em Manutenção</option>
+                    </select>
+                </div>
+                <div class="col-span-2 sm:col-span-1">
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Setor Destino</label>
+                    <select id="form-setor" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                        <!-- Preenchido via JavaScript -->
+                    </select>
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end gap-3 pt-4 border-t border-slate-100">
+                <button type="button" onclick="fecharModalCRUD()" class="px-5 py-2.5 text-slate-600 font-bold hover:bg-slate-100 rounded-lg transition-colors">Cancelar</button>
+                <button type="submit" id="btn-save" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-md transition-transform active:scale-95">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- SCRIPT CORE E LÓGICA DA PÁGINA -->
+<script src="js/admin-core.js"></script>
+<script>
+    let pdasList = [];
+    let setoresList = [];
+    let rascunhoLote = [];
+    let pdasBipadas = new Set();
+
+    // Estado de Ordenação Padrão
+    let currentSort = { field: 'patrimonio', direction: 'asc' };
+
+    // Previne erros no preview local
+    if (typeof API_BASE_URL === 'undefined') {
+        window.API_BASE_URL = '/api';
+        setTimeout(initPage, 500);
+    }
+
+    // Evento disparado pelo admin-core.js quando o login é validado
+    document.addEventListener('AdminSessionValid', initPage);
+
+    async function initPage() {
+        await Promise.all([carregarSetores(), carregarPDAs()]);
+    }
+
+    // ==========================================
+    // CARREGAMENTOS INICIAIS (GET API)
+    // ==========================================
+    async function carregarSetores() {
+        const url = typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : window.API_BASE_URL;
+        try {
+            const res = await fetch(`${url}/setores`);
+            if(res.ok) {
+                setoresList = await res.json();
+            }
+        } catch(e) {
+            console.error("Falha ao buscar setores:", e);
+        }
+        popularSelectsSetor();
+    }
+
+    function popularSelectsSetor() {
+        const selects = [
+            document.getElementById('bulk-setor-select'),
+            document.getElementById('bulk-scan-setor'),
+            document.getElementById('lote-pda-setor'),
+            document.getElementById('form-setor')
+        ];
+
+        selects.forEach(s => {
+            if(!s) return;
+
+            if(s.id === 'form-setor' || s.id === 'lote-pda-setor') {
+                s.innerHTML = '<option value="">Nenhum (T.I.)</option>';
+            } else {
+                s.innerHTML = '<option value="" disabled selected>Escolha Setor...</option>';
+            }
+
+            setoresList.forEach(setor => {
+                s.innerHTML += `<option value="${setor.nome}">${setor.nome}</option>`;
+            });
+        });
+    }
+
+    async function carregarPDAs() {
+        const url = typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : window.API_BASE_URL;
+        try {
+            const res = await fetch(`${url}/pdas`);
+            if(!res.ok) throw new Error("A resposta da API falhou.");
+
+            pdasList = await res.json();
+            ordenarEAtualizarTabela();
+        } catch(e) {
+            const tbody = document.getElementById('tbody-pdas');
+            if(tbody) tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-red-500 font-bold">Erro de conexão com o banco de dados.</td></tr>`;
+        }
+    }
+
+    // ==========================================
+    // ORDENAÇÃO E RENDERIZAÇÃO DA TABELA
+    // ==========================================
+    function ordenarTabela(campo) {
+        // Se clicar no mesmo campo, inverte a ordem. Senão, define como ascendente.
+        if(currentSort.field === campo) {
+            currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+        } else {
+            currentSort.field = campo;
+            currentSort.direction = 'asc';
+        }
+        ordenarEAtualizarTabela();
+    }
+
+    function ordenarEAtualizarTabela() {
+        // Limpa todos os ícones e insere a seta no cabeçalho correspondente
+        document.querySelectorAll('.sort-icon').forEach(icon => icon.innerHTML = '');
+
+        const iconeSeta = currentSort.direction === 'asc' ? '<i class="ph ph-caret-up text-blue-500 font-bold"></i>' : '<i class="ph ph-caret-down text-blue-500 font-bold"></i>';
+        const cabecalhoAlvo = document.getElementById(`sort-${currentSort.field}`);
+        if (cabecalhoAlvo) cabecalhoAlvo.innerHTML = iconeSeta;
+
+        // Ordena o array global de PDAs
+        pdasList.sort((a, b) => {
+            let valorA = a[currentSort.field] || '';
+            let valorB = b[currentSort.field] || '';
+
+            if(valorA < valorB) return currentSort.direction === 'asc' ? -1 : 1;
+            if(valorA > valorB) return currentSort.direction === 'asc' ? 1 : -1;
+            return 0;
+        });
+
+        // Aplica a renderização considerando a busca ativa
+        filtrarTabela();
+    }
+
+    function filtrarTabela() {
+        const termoBusca = document.getElementById('search-input').value.toLowerCase();
+        const listaFiltrada = pdasList.filter(p => p.patrimonio.toLowerCase().includes(termoBusca));
+        renderTabela(listaFiltrada);
+    }
+
+    function renderTabela(lista) {
+        const tbody = document.getElementById('tbody-pdas');
+        if(!tbody) return;
+
+        tbody.innerHTML = '';
+
+        if(lista.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-500">Nenhum equipamento encontrado.</td></tr>';
+            return;
+        }
+
+        lista.forEach(p => {
+            let badgeStatus = '';
+            if(p.status === 'EM_USO') badgeStatus = '<span class="text-green-700 bg-green-100 px-2 py-0.5 rounded font-bold text-[10px] uppercase border border-green-200">EM USO</span>';
+            else if (p.status === 'MANUTENCAO') badgeStatus = '<span class="text-red-700 bg-red-100 px-2 py-0.5 rounded font-bold text-[10px] uppercase border border-red-200">MANUTENÇÃO</span>';
+            else if (p.status === 'ESTOQUE_TI') badgeStatus = '<span class="text-blue-700 bg-blue-100 px-2 py-0.5 rounded font-bold text-[10px] uppercase border border-blue-200">ESTOQUE T.I.</span>';
+            else badgeStatus = '<span class="text-amber-700 bg-amber-100 px-2 py-0.5 rounded font-bold text-[10px] uppercase border border-amber-200">ARMÁRIO SETOR</span>';
+
+            const setorVisual = p.setorAlocado || '<span class="text-slate-400 italic">--</span>';
+
+            tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50 transition-colors border-b border-slate-100">
+                        <td class="p-4 text-center">
+                            <input type="checkbox" value="${p.id}" class="row-check w-4 h-4 rounded border-slate-300 text-blue-600 cursor-pointer focus:ring-blue-500" onchange="verificarAcoesMassa()">
+                        </td>
+                        <td class="p-4 font-bold font-mono text-slate-800">${p.patrimonio}</td>
+                        <td class="p-4 text-slate-600 font-medium">${p.modelo}</td>
+                        <td class="p-4">${badgeStatus}</td>
+                        <td class="p-4 font-medium text-slate-700">${setorVisual}</td>
+                        <td class="p-4 text-right">
+                            <button onclick="editarPDA(${p.id})" class="p-2 text-slate-400 hover:text-blue-600 bg-slate-50 hover:bg-blue-50 rounded-lg transition-colors" title="Editar Equipamento">
+                                <i class="ph ph-pencil-simple text-lg"></i>
+                            </button>
+                            <button onclick="excluirPDA(${p.id}, '${p.patrimonio}')" class="p-2 text-slate-400 hover:text-red-600 bg-slate-50 hover:bg-red-50 rounded-lg transition-colors ml-1" title="Excluir Equipamento">
+                                <i class="ph ph-trash text-lg"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+        });
+        verificarAcoesMassa();
+    }
+
+    // ==========================================
+    // CRIAÇÃO EM LOTE DE PDAs (MODAL NOVO)
+    // ==========================================
+    function abrirModalCriacaoLote() {
+        limparRascunhoLote();
+        document.getElementById('modal-criacao-lote').classList.replace('hidden', 'flex');
+        setTimeout(() => document.getElementById('lote-in-pat').focus(), 100);
+    }
+
+    function fecharModalCriacaoLote() {
+        document.getElementById('modal-criacao-lote').classList.replace('flex', 'hidden');
+    }
+
+    // Lida com o pressionamento do Enter no campo de Scanner de Criação
+    function adicionarRascunhoPdaBtn(event) {
+        if(event) event.preventDefault(); // Previne reload da página
+
+        const inputPatrimonio = document.getElementById('lote-in-pat');
+        const patrimonioLido = inputPatrimonio.value.trim().toUpperCase();
+
+        if(!patrimonioLido) return;
+
+        adicionarLinhaRascunho(patrimonioLido);
+
+        inputPatrimonio.value = ''; // Limpa rápido
+        inputPatrimonio.focus();
+    }
+
+    function processarExcelPdas() {
+        const rawText = document.getElementById('lote-excel-area').value;
+        if(!rawText.trim()) return;
+
+        const linhas = rawText.split('\n');
+        let inseridosNaLista = 0;
+
+        linhas.forEach(linha => {
+            const patrimonioLimpo = linha.trim().toUpperCase();
+            if(patrimonioLimpo) {
+                adicionarLinhaRascunho(patrimonioLimpo);
+                inseridosNaLista++;
+            }
+        });
+
+        document.getElementById('lote-excel-area').value = '';
+        showToast(`${inseridosNaLista} patrimônios extraídos do texto!`, 'info');
+    }
+
+    function adicionarLinhaRascunho(patrimonio) {
+        // Evita duplicatas visuais no rascunho
+        if(rascunhoLote.find(p => p.patrimonio === patrimonio)) return;
+
+        rascunhoLote.push({ patrimonio: patrimonio });
+        atualizarGridRascunho();
+    }
+
+    function removerDoRascunho(patrimonioParaRemover) {
+        rascunhoLote = rascunhoLote.filter(p => p.patrimonio !== patrimonioParaRemover);
+        atualizarGridRascunho();
+    }
+
+    function limparRascunhoLote() {
+        rascunhoLote = [];
+        atualizarGridRascunho();
+        document.getElementById('lote-status-text').innerText = "Pronto para iniciar.";
+    }
+
+    function atualizarGridRascunho() {
+        const tbody = document.getElementById('lote-draft-body');
+        tbody.innerHTML = '';
+
+        document.getElementById('lote-count').innerText = rascunhoLote.length;
+
+        rascunhoLote.forEach(p => {
+            tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50 border-b border-slate-100 transition-colors">
+                        <td class="p-3 font-bold font-mono text-slate-800">${p.patrimonio}</td>
+                        <td class="p-3 text-right">
+                            <button onclick="removerDoRascunho('${p.patrimonio}')" class="text-red-500 hover:text-red-700 font-bold hover:underline text-xs bg-red-50 px-2 py-1 rounded transition-colors">
+                                Remover
+                            </button>
+                        </td>
+                    </tr>
+                `;
+        });
+    }
+
+    async function executarCriacaoLote() {
+        if(rascunhoLote.length === 0) {
+            return showToast("A fila está vazia. Adicione PDAs primeiro.", "warning");
+        }
+
+        const modeloBase = document.getElementById('lote-pda-modelo').value || 'PDA PADRÃO';
+        const statusBase = document.getElementById('lote-pda-status').value;
+        const setorDestino = document.getElementById('lote-pda-setor').value || null;
+
+        if(statusBase === 'ESTOQUE_SETOR' && !setorDestino) {
+            return showToast("Para alocar no setor, você precisa selecionar o Setor Destino na configuração.", "warning");
+        }
+
+        const btn = document.getElementById('btn-executar-lote');
+        const originalHtml = btn.innerHTML;
+        const statusTxt = document.getElementById('lote-status-text');
+
+        btn.disabled = true;
+
+        const url = typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : window.API_BASE_URL;
+        let qtySucesso = 0, qtyErro = 0;
+
+        // Processamento Sequencial (Protege o backend Java)
+        for (let i = 0; i < rascunhoLote.length; i++) {
+            const pdaData = rascunhoLote[i];
+            statusTxt.innerHTML = `<i class="ph ph-spinner animate-spin text-blue-600"></i> A registrar ${i+1} de ${rascunhoLote.length} (<span class="font-mono">${pdaData.patrimonio}</span>)...`;
+
+            try {
+                const payload = {
+                    patrimonio: pdaData.patrimonio,
+                    modelo: modeloBase,
+                    status: statusBase,
+                    setorAlocado: setorDestino
+                };
+
+                const response = await fetch(`${url}/pdas`, {
+                    method: 'POST',
+                    headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify(payload)
+                });
+
+                if(response.ok) {
+                    qtySucesso++;
+                } else {
+                    qtyErro++;
+                }
+            } catch(e) {
+                qtyErro++;
+            }
+        }
+
+        statusTxt.innerHTML = `<span class="text-green-600 font-bold">${qtySucesso} criadas com sucesso.</span> <span class="text-red-500 font-bold ml-2">${qtyErro} ignoradas/erros.</span>`;
+
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+
+        limparRascunhoLote();
+        carregarPDAs(); // Atualiza a tabela principal
+    }
+
+    // ==========================================
+    // AÇÕES EM LOTE (TABELA - CHECKBOXES)
+    // ==========================================
+    function toggleAllCheckboxes() {
+        const allChecked = document.getElementById('check-all').checked;
+        document.querySelectorAll('.row-check').forEach(cb => {
+            cb.checked = allChecked;
+        });
+        verificarAcoesMassa();
+    }
+
+    function verificarAcoesMassa() {
+        const checksAtivos = document.querySelectorAll('.row-check:checked');
+        const statusBar = document.getElementById('bulk-actions-bar');
+
+        document.getElementById('bulk-count').innerText = checksAtivos.length;
+
+        if(checksAtivos.length > 0) {
+            statusBar.classList.replace('hidden', 'flex');
+        } else {
+            statusBar.classList.replace('flex', 'hidden');
+        }
+    }
+
+    function verificarTipoAcaoMassa() {
+        const actionType = document.getElementById('bulk-action-type').value;
+        const selectSetor = document.getElementById('bulk-setor-select');
+        const selectStatus = document.getElementById('bulk-status-select');
+
+        // Oculta ambos inicialmente
+        selectSetor.classList.add('hidden');
+        selectStatus.classList.add('hidden');
+
+        if(actionType === 'SETOR') {
+            selectSetor.classList.remove('hidden');
+        } else if (actionType === 'STATUS') {
+            selectStatus.classList.remove('hidden');
+        }
+
+        // Tratamento visual para o botão deletar
+        if(actionType === 'DELETAR') {
+            document.getElementById('bulk-action-type').classList.add('text-red-600');
+        } else {
+            document.getElementById('bulk-action-type').classList.remove('text-red-600');
+        }
+    }
+
+    async function aplicarAcaoMassa() {
+        const action = document.getElementById('bulk-action-type').value;
+        const idsSelecionados = Array.from(document.querySelectorAll('.row-check:checked')).map(cb => parseInt(cb.value));
+        const url = typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : window.API_BASE_URL;
+
+        const btnAplicar = document.getElementById('btn-aplicar-bulk');
+        const btnHtmlOriginal = btnAplicar.innerHTML;
+
+        // ROTA 1: DELEÇÃO EM MASSA
+        if (action === 'DELETAR') {
+            if(!confirm(`ATENÇÃO! EXCLUIR PERMANENTEMENTE ${idsSelecionados.length} equipamentos da base de dados?`)) return;
+
+            try {
+                btnAplicar.disabled = true;
+                btnAplicar.innerHTML = `<i class="ph ph-spinner animate-spin"></i> Processando...`;
+
+                await Promise.all(idsSelecionados.map(id => fetch(`${url}/pdas/${id}`, { method: 'DELETE' })));
+
+                showToast(`${idsSelecionados.length} equipamentos excluídos.`, 'success');
+                document.getElementById('check-all').checked = false;
+                await carregarPDAs();
+            } catch (e) {
+                showToast("Falha grave ao excluir equipamentos.", "error");
+            } finally {
+                btnAplicar.disabled = false;
+                btnAplicar.innerHTML = btnHtmlOriginal;
+            }
+            return;
+        }
+
+        // ROTA 2: ATUALIZAÇÃO DE STATUS OU SETOR
+        let setorDestino = null;
+        let novoStatus = null;
+
+        if (action === 'SETOR') {
+            setorDestino = document.getElementById('bulk-setor-select').value;
+            if(!setorDestino) return showToast("Selecione um setor de destino válido!", "warning");
+            novoStatus = 'ESTOQUE_SETOR';
+        } else if (action === 'STATUS') {
+            novoStatus = document.getElementById('bulk-status-select').value;
+            if(!novoStatus) return showToast("Selecione o novo status físico desejado!", "warning");
+        }
+
+        if(!confirm(`Deseja aplicar esta alteração em ${idsSelecionados.length} equipamento(s)?`)) return;
+
+        try {
+            btnAplicar.disabled = true;
+            btnAplicar.innerHTML = `<i class="ph ph-spinner animate-spin"></i> Processando...`;
+
+            await Promise.all(idsSelecionados.map(id => {
+                const pdaOriginal = pdasList.find(p => p.id === id);
+                const payload = { ...pdaOriginal };
+
+                if (action === 'SETOR') {
+                    payload.setorAlocado = setorDestino;
+                    payload.status = novoStatus;
+                } else if (action === 'STATUS') {
+                    payload.status = novoStatus;
+                    // Limpa vínculo caso seja jogada para a TI livre ou Manutenção
+                    if (novoStatus === 'ESTOQUE_TI' || novoStatus === 'MANUTENCAO') {
+                        payload.setorAlocado = null;
+                        payload.donoTurno1 = null;
+                        payload.donoTurno2 = null;
+                    }
+                }
+
+                return fetch(`${url}/pdas/${id}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+            }));
+
+            showToast(`Alteração em lote aplicada com sucesso!`, 'success');
+            document.getElementById('check-all').checked = false;
+            verificarAcoesMassa();
+            await carregarPDAs();
+        } catch (e) {
+            showToast("Erro na comunicação para atualizar em massa.", "error");
+        } finally {
+            btnAplicar.disabled = false;
+            btnAplicar.innerHTML = btnHtmlOriginal;
+        }
+    }
+
+    // ==========================================
+    // AÇÕES EM LOTE (MODAL SCANNER)
+    // ==========================================
+    const scannerUpdateMassivo = document.getElementById('bulk-scanner-input');
+
+    function verificarAcaoScanner() {
+        const type = document.getElementById('bulk-scan-action').value;
+        const containerSetorStatus = document.getElementById('div-scan-setor');
+
+        // Oculta ambos os selects
+        document.getElementById('bulk-scan-setor').classList.add('hidden');
+        document.getElementById('bulk-scan-status').classList.add('hidden');
+        containerSetorStatus.classList.add('hidden');
+
+        if(type === 'SETOR') {
+            containerSetorStatus.classList.remove('hidden');
+            document.getElementById('bulk-scan-setor').classList.remove('hidden');
+        } else if (type === 'STATUS') {
+            containerSetorStatus.classList.remove('hidden');
+            document.getElementById('bulk-scan-status').classList.remove('hidden');
+        }
+    }
+
+    function abrirModalBipagemMassiva() {
+        pdasBipadas.clear();
+        document.getElementById('bulk-scan-list').innerHTML = '';
+        atualizaContadorBipagem();
+        document.getElementById('modal-bulk-scan').classList.replace('hidden', 'flex');
+        setTimeout(() => scannerUpdateMassivo.focus(), 100);
+    }
+
+    function fecharModalBipagem() {
+        document.getElementById('modal-bulk-scan').classList.replace('flex', 'hidden');
+    }
+
+    // Leitura Feroz do Scanner (Update)
+    scannerUpdateMassivo.addEventListener('keypress', function(e) {
+        if(e.key === 'Enter') {
+            e.preventDefault(); // Impede refresh ou submissão indesejada
+            const patrimonioLido = this.value.trim().toUpperCase();
+
+            if(patrimonioLido) {
+                const pdaEncontrada = pdasList.find(x => x.patrimonio === patrimonioLido);
+
+                if(pdaEncontrada && !pdasBipadas.has(pdaEncontrada.id)) {
+                    pdasBipadas.add(pdaEncontrada.id);
+
+                    const itemLista = document.createElement('li');
+                    itemLista.className = "flex justify-between items-center p-4 bg-white border border-slate-200 rounded-lg shadow-sm fade-enter mb-2";
+                    itemLista.innerHTML = `
+                            <div><span class="font-bold font-mono text-slate-800 text-lg">${pdaEncontrada.patrimonio}</span></div>
+                            <span class="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-full uppercase tracking-wider border border-slate-200">${pdaEncontrada.setorAlocado || 'ESTOQUE T.I.'}</span>
+                        `;
+                    document.getElementById('bulk-scan-list').prepend(itemLista);
+                    atualizaContadorBipagem();
+
+                } else if(!pdaEncontrada) {
+                    showToast(`O Patrimônio ${patrimonioLido} não existe na base de dados.`, 'error');
+                } else if(pdasBipadas.has(pdaEncontrada.id)) {
+                    showToast(`Equipamento ${patrimonioLido} já lido na fila atual.`, 'warning');
+                }
+            }
+
+            this.value = ''; // Limpa o input IMEDIATAMENTE para a próxima leitura
+        }
+    });
+
+    function atualizaContadorBipagem() {
+        document.getElementById('bulk-scan-count').innerText = pdasBipadas.size;
+    }
+
+    async function processarBipagemMassiva() {
+        if(pdasBipadas.size === 0) return showToast("Nenhum equipamento bipado na fila.", "warning");
+
+        const action = document.getElementById('bulk-scan-action').value;
+        const url = typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : window.API_BASE_URL;
+
+        const btn = document.getElementById('btn-process-bulk');
+        const originalHtmlBtn = btn.innerHTML;
+
+        // ROTA 1: DELETAR
+        if (action === 'DELETAR') {
+            if(!confirm(`EXCLUIR PERMANENTEMENTE ${pdasBipadas.size} PDAs da base de dados?`)) return;
+
+            try {
+                btn.disabled = true;
+                btn.innerHTML = `<i class="ph ph-spinner animate-spin"></i> Excluindo...`;
+
+                await Promise.all(Array.from(pdasBipadas).map(id => fetch(`${url}/pdas/${id}`, { method: 'DELETE' })));
+
+                showToast(`${pdasBipadas.size} PDAs excluídas com sucesso.`, 'success');
+                fecharModalBipagem();
+                await carregarPDAs();
+            } catch (e) {
+                showToast("Erro fatal ao excluir lote.", "error");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHtmlBtn;
+            }
+            return;
+        }
+
+        // ROTA 2: ATUALIZAR
+        let setorDestino = null;
+        let novoStatus = null;
+
+        if (action === 'SETOR') {
+            setorDestino = document.getElementById('bulk-scan-setor').value;
+            if(!setorDestino) return showToast("Selecione o Setor Destino no topo da tela.", "warning");
+            novoStatus = 'ESTOQUE_SETOR';
+        } else if (action === 'STATUS') {
+            novoStatus = document.getElementById('bulk-scan-status').value;
+            if(!novoStatus) return showToast("Selecione o Status Físico no topo da tela.", "warning");
+        }
+
+        try {
+            btn.disabled = true;
+            btn.innerHTML = `<i class="ph ph-spinner animate-spin"></i> Processando Atualizações...`;
+
+            await Promise.all(Array.from(pdasBipadas).map(id => {
+                const pOrig = pdasList.find(p => p.id === id);
+                const payload = { ...pOrig };
+
+                if (action === 'SETOR') {
+                    payload.setorAlocado = setorDestino;
+                    payload.status = novoStatus;
+                } else if (action === 'STATUS') {
+                    payload.status = novoStatus;
+                    if (novoStatus === 'ESTOQUE_TI' || novoStatus === 'MANUTENCAO') {
+                        payload.setorAlocado = null;
+                        payload.donoTurno1 = null;
+                        payload.donoTurno2 = null;
+                    }
+                }
+
+                return fetch(`${url}/pdas/${id}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+            }));
+
+            showToast(`As atualizações foram concluídas com sucesso!`, 'success');
+            fecharModalBipagem();
+            await carregarPDAs();
+        } catch (e) {
+            showToast("Falha na atualização via rede.", "error");
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalHtmlBtn;
+        }
+    }
+
+    // ==========================================
+    // CRUD DE EQUIPAMENTO ÚNICO
+    // ==========================================
+    function abrirModalCRUD() {
+        document.getElementById('form-id').value = '';
+        document.getElementById('form-patrimonio').value = '';
+        document.getElementById('form-patrimonio').readOnly = false;
+        document.getElementById('form-modelo').value = 'PDA EF550';
+        document.getElementById('form-status').value = 'ESTOQUE_TI';
+        document.getElementById('form-setor').value = '';
+
+        document.getElementById('modal-title').innerHTML = '<i class="ph ph-device-mobile text-blue-600 text-2xl"></i> Cadastrar Equipamento';
+        document.getElementById('modal-crud').classList.replace('hidden', 'flex');
+    }
+
+    function editarPDA(id) {
+        const pdaTarget = pdasList.find(x => x.id === id);
+        if(!pdaTarget) return;
+
+        document.getElementById('form-id').value = pdaTarget.id;
+        document.getElementById('form-patrimonio').value = pdaTarget.patrimonio;
+        document.getElementById('form-patrimonio').readOnly = true;
+        document.getElementById('form-modelo').value = pdaTarget.modelo;
+        document.getElementById('form-status').value = pdaTarget.status;
+        document.getElementById('form-setor').value = pdaTarget.setorAlocado || '';
+
+        document.getElementById('modal-title').innerHTML = '<i class="ph ph-pencil-simple text-blue-600 text-2xl"></i> Editar Equipamento';
+        document.getElementById('modal-crud').classList.replace('hidden', 'flex');
+    }
+
+    function fecharModalCRUD() {
+        document.getElementById('modal-crud').classList.replace('flex', 'hidden');
+    }
+
+    async function salvarPDA(e) {
+        e.preventDefault();
+
+        const id = document.getElementById('form-id').value;
+        const payload = {
+            patrimonio: document.getElementById('form-patrimonio').value.trim().toUpperCase(),
+            modelo: document.getElementById('form-modelo').value.trim().toUpperCase(),
+            status: document.getElementById('form-status').value,
+            setorAlocado: document.getElementById('form-setor').value || null
+        };
+
+        const url = typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : window.API_BASE_URL;
+
+        try {
+            const res = await fetch(id ? `${url}/pdas/${id}` : `${url}/pdas`, {
+                method: id ? 'PUT' : 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+
+            if(!res.ok) {
+                const errPayload = await res.json();
+                throw new Error(errPayload.erro || "Erro inesperado ao salvar registro na base.");
+            }
+
+            showToast(`Equipamento salvo com sucesso no sistema!`, 'success');
+            fecharModalCRUD();
+            carregarPDAs();
+        } catch(error) {
+            showToast(error.message, "error");
+        }
+    }
+
+    async function excluirPDA(id, patrimonio) {
+        if(!confirm(`Aviso Crítico: Excluir a PDA ${patrimonio} apagará definitivamente o histórico de retiradas e chamados de T.I. atrelados a ela. Deseja continuar?`)) return;
+
+        const url = typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : window.API_BASE_URL;
+
+        try {
+            const res = await fetch(`${url}/pdas/${id}`, { method: 'DELETE' });
+            if(!res.ok) throw new Error("A exclusão falhou na base de dados.");
+
+            showToast(`Equipamento excluído permanentemente.`, 'success');
+            carregarPDAs();
+        } catch(e) {
+            showToast(e.message, "error");
+        }
+    }
+</script>
+</body>
+</html>

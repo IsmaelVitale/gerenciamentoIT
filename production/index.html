@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestão de Dispositivos - ID Logistics</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+  <script src="js/impressao.js"></script>
+
+  <style>
+    @keyframes pulse-ring { 0% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 15px rgba(59, 130, 246, 0); } 100% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); } }
+    .scanner-ring { animation: pulse-ring 2s infinite; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+    #etiqueta-print-area { display: none; }
+    @media print {
+      body > header, body > main, #toast-container { display: none !important; }
+      body { background-color: white !important; margin: 0 !important; padding: 0 !important; }
+      @page { size: 70mm 10mm; margin: 0mm !important; }
+      #etiqueta-print-area { display: flex !important; width: 70mm; height: 10mm; align-items: center; justify-content: center; margin: 0 !important; padding: 0 !important; box-sizing: border-box; overflow: hidden; }
+      #etiqueta-print-texto { font-family: 'Arial', sans-serif; font-weight: bold; font-size: 12pt; text-align: center; text-transform: uppercase; color: black; white-space: nowrap; letter-spacing: 0.5px; }
+    }
+  </style>
+</head>
+<body class="bg-gray-100 text-gray-800 min-h-screen flex flex-col font-sans">
+
+<div id="etiqueta-print-area"><span id="etiqueta-print-texto"></span></div>
+
+<header class="bg-blue-900 text-white p-3 md:p-4 shadow-md flex justify-between items-center z-20 sticky top-0">
+  <div class="flex items-center gap-2 md:gap-3">
+    <i class="ph ph-barcode text-2xl md:text-3xl"></i>
+    <h1 class="text-base md:text-xl font-bold truncate">Gestão de Dispositivos - ID Logistics</h1>
+  </div>
+  <div class="flex items-center gap-1.5 md:gap-2 text-xs md:text-sm font-medium bg-blue-800 px-2 md:px-3 py-1 md:py-1.5 rounded-full whitespace-nowrap shadow-inner">
+    <span class="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-green-400 scanner-ring"></span>
+    <span class="hidden sm:inline">Pronto para Bipar</span>
+    <span class="sm:hidden">Ativo</span>
+  </div>
+</header>
+
+<div id="toast-container" class="fixed top-16 md:top-20 right-4 z-[9999] flex flex-col gap-2 w-72 md:w-80 max-w-[90vw]"></div>
+
+<main class="flex-grow p-4 md:p-6 grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 relative">
+
+  <div class="bg-white rounded-xl shadow-lg p-5 lg:p-6 flex flex-col order-2 lg:order-1 h-full">
+    <h2 class="text-base md:text-lg font-bold text-gray-800 mb-4 flex items-center gap-2 border-b pb-2">
+      <i class="ph ph-chart-pie-slice text-blue-600 text-xl"></i> Estado Global de PDAs
+    </h2>
+    <div class="grid grid-cols-3 gap-2 md:gap-3 mb-4 md:mb-6">
+      <div class="bg-blue-50 border border-blue-200 p-2 md:p-3 rounded-lg text-center flex flex-col justify-center">
+        <p class="text-[10px] md:text-xs text-blue-700 font-bold uppercase tracking-tight">Ativas</p>
+        <p class="text-xl md:text-2xl font-black text-blue-900" id="kpi-total">--</p>
+      </div>
+      <div class="bg-green-50 border border-green-200 p-2 md:p-3 rounded-lg text-center flex flex-col justify-center">
+        <p class="text-[10px] md:text-xs text-green-700 font-bold uppercase tracking-tight">Em Uso</p>
+        <p class="text-xl md:text-2xl font-black text-green-900" id="kpi-uso">--</p>
+      </div>
+      <div class="bg-red-50 border border-red-200 p-2 md:p-3 rounded-lg text-center flex flex-col justify-center">
+        <p class="text-[10px] md:text-xs text-red-700 font-bold uppercase leading-tight tracking-tight">Atrasadas</p>
+        <p class="text-xl md:text-2xl font-black text-red-900" id="kpi-nao-devolvidas">--</p>
+      </div>
+    </div>
+    <div id="kpi-chart" class="w-full min-h-[180px] md:min-h-[220px] flex-grow"></div>
+  </div>
+
+  <div class="bg-white rounded-xl shadow-lg p-6 lg:p-8 flex flex-col items-center justify-center text-center relative overflow-hidden order-first lg:order-2 min-h-[350px] lg:h-full border-2 border-transparent transition-all">
+    <div class="absolute inset-0 opacity-5 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-500 via-transparent to-transparent pointer-events-none"></div>
+
+    <div class="relative z-10 flex flex-col items-center w-full transition-all" id="dynamic-ui">
+      <i id="ui-icon" class="ph ph-scan text-6xl md:text-7xl text-blue-600 mb-3 md:mb-4 drop-shadow-sm transition-colors"></i>
+      <h2 id="ui-title" class="text-xl md:text-2xl font-black text-gray-800 mb-2 uppercase tracking-wide">Central de Acesso</h2>
+      <p id="ui-desc" class="text-gray-500 text-sm mb-6 md:mb-8 max-w-sm leading-relaxed font-medium">
+        Bipe o Patrimônio da <b>PDA</b> ou a sua <b>Matrícula</b> para acessar.
+      </p>
+
+      <form onsubmit="submeterEntrada(event)" class="w-full max-w-sm relative flex items-center gap-2 mb-6">
+        <div class="relative flex-grow">
+          <i class="ph ph-keyboard absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 text-xl"></i>
+          <input type="text" id="main-scanner-input" autofocus class="block w-full pl-12 pr-4 py-3 md:py-4 border-2 border-blue-400 rounded-xl text-center text-lg md:text-xl font-bold tracking-widest text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-600 transition-all shadow-inner bg-blue-50/50 uppercase" placeholder="INSERIR CÓDIGO" autocomplete="off">
+        </div>
+        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white p-3 md:p-4 rounded-xl shadow-md transition-transform active:scale-95 border-2 border-blue-600">
+          <i class="ph ph-arrow-right text-xl md:text-2xl font-bold"></i>
+        </button>
+      </form>
+
+      <div id="ui-actions" class="w-full flex flex-col items-center justify-center gap-2"></div>
+
+      <div id="ui-cancelar" class="w-full max-w-sm mt-2 hidden">
+        <button type="button" onclick="atualizarUI('IDLE')" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 rounded-xl border border-slate-300 shadow-sm transition-colors">Cancelar Operação</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-xl shadow-lg p-5 lg:p-6 flex flex-col order-3 h-full">
+    <h2 class="text-base md:text-lg font-bold text-gray-800 mb-4 flex items-center gap-2 border-b pb-2">
+      <i class="ph ph-headset text-blue-600 text-xl"></i> Abertura de Chamado
+    </h2>
+    <form id="form-chamado" class="flex flex-col gap-3 md:gap-4 flex-grow" onsubmit="enviarChamado(event)">
+      <div class="grid grid-cols-2 gap-3 md:gap-4">
+        <div>
+          <label class="block text-xs md:text-sm font-medium text-gray-700 mb-1">Solicitação</label>
+          <select id="tipo-chamado" required class="w-full border border-gray-300 rounded-lg p-2 md:p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none ignore-scanner bg-white">
+            <option value="" disabled selected>Selecione...</option>
+            <option value="MANUTENCAO">Manutenção PDA</option>
+            <option value="RECLAMACAO">Reclamação</option>
+            <option value="PEDIDO_TI">Pedido à TI</option>
+            <option value="OUTROS">Outros</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs md:text-sm font-medium text-gray-700 mb-1">Prioridade</label>
+          <select id="prioridade-chamado" required class="w-full border border-gray-300 rounded-lg p-2 md:p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none ignore-scanner bg-white">
+            <option value="" disabled selected>Nível...</option>
+            <option value="BAIXA">Baixa</option>
+            <option value="MEDIA">Média</option>
+            <option value="ALTA">Alta</option>
+            <option value="CRITICA">Crítica (Parada)</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-3 md:gap-4">
+        <div>
+          <label class="block text-xs md:text-sm font-medium text-gray-700 mb-1">Sua Matrícula</label>
+          <input type="text" id="matricula-chamado" required class="w-full border border-gray-300 rounded-lg p-2 md:p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none ignore-scanner" placeholder="Ex: 12345">
+        </div>
+        <div>
+          <label class="block text-xs md:text-sm font-medium text-gray-700 mb-1">Patrimônio PDA</label>
+          <input type="text" id="pda-chamado" class="w-full border border-gray-300 rounded-lg p-2 md:p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none ignore-scanner uppercase font-mono" placeholder="Ex: PDA-123">
+        </div>
+      </div>
+      <div class="flex-grow flex flex-col">
+        <label class="block text-xs md:text-sm font-medium text-gray-700 mb-1">Descrição</label>
+        <textarea id="descricao-chamado" required rows="3" class="w-full flex-grow border border-gray-300 rounded-lg p-2 md:p-2.5 text-sm resize-none focus:ring-2 focus:ring-blue-500 outline-none ignore-scanner min-h-[80px]" placeholder="Descreva o problema..."></textarea>
+      </div>
+      <button type="submit" id="btn-submit-chamado" class="w-full bg-gray-800 hover:bg-gray-900 text-white font-bold py-2.5 md:py-3 rounded-lg transition-colors flex justify-center items-center gap-2 mt-1 md:mt-2 text-sm md:text-base ignore-scanner">
+        <i class="ph ph-paper-plane-right"></i> Enviar Solicitação
+      </button>
+    </form>
+  </div>
+</main>
+
+<script>
+  const API_BASE_URL = '/api';
+  let dadosGlobais = { pdas: [], usuarios: [], historico: [] };
+  let estadoQuiosque = 'IDLE';
+  let fluxoAtual = { operador: null, pda: null, statusRealPda: null, liderMat: null };
+  const scannerInput = document.getElementById('main-scanner-input');
+
+  window.onload = () => { carregarDadosGlobais(); atualizarUI('IDLE'); setInterval(forcarFocoScanner, 2000); };
+
+  function showToast(message, type = 'info') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    let bgClass = type === 'success' ? 'bg-green-600' : (type === 'error' ? 'bg-red-600' : 'bg-amber-500');
+    toast.className = `${bgClass} text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-3 mb-2 transform transition-all duration-300 translate-x-full opacity-0 text-sm font-bold z-50`;
+    toast.innerHTML = `<i class="ph ph-${type==='success'?'check-circle':(type==='error'?'warning-circle':'info')} text-xl"></i> <span>${message}</span>`;
+    container.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.remove('translate-x-full', 'opacity-0'));
+    setTimeout(() => { toast.classList.add('opacity-0', 'translate-x-full'); setTimeout(() => toast.remove(), 300); }, 3500);
+  }
+
+  function getNomeCurto(nomeCompleto) {
+    if (!nomeCompleto) return 'VAGO';
+    const partes = nomeCompleto.trim().split(' ').filter(p => p.length > 0);
+    if (partes.length === 1) return partes[0].toUpperCase();
+    return (partes[0] + ' ' + partes[partes.length - 1]).toUpperCase();
+  }
+
+  function atualizarUI(estado) {
+    estadoQuiosque = estado;
+    const uiIcon = document.getElementById('ui-icon');
+    const uiTitle = document.getElementById('ui-title');
+    const uiDesc = document.getElementById('ui-desc');
+    const uiActions = document.getElementById('ui-actions');
+    const uiCancelar = document.getElementById('ui-cancelar');
+
+    uiActions.innerHTML = '';
+    scannerInput.value = '';
+
+    switch(estado) {
+      case 'IDLE':
+        uiIcon.className = 'ph ph-scan text-6xl md:text-7xl text-blue-600 mb-3 md:mb-4';
+        uiTitle.className = 'text-xl md:text-2xl font-black text-gray-800 mb-2 uppercase tracking-wide';
+        uiTitle.innerText = 'Central de Acesso';
+        uiDesc.innerHTML = 'Bipe o Patrimônio da <b>PDA</b> ou a sua <b>Matrícula</b> para acessar.';
+        scannerInput.placeholder = 'INSERIR CÓDIGO...';
+        uiCancelar.classList.add('hidden');
+        uiActions.innerHTML = `<button type="button" onclick="atualizarUI('PRINT')" class="bg-white border border-slate-300 text-slate-600 font-bold py-3 px-6 rounded-xl shadow-sm w-full max-w-sm flex items-center justify-center gap-2 hover:bg-slate-50 transition-colors"><i class="ph ph-printer text-xl"></i> Reimprimir Etiqueta</button>`;
+        break;
+
+      case 'CONFIRM_PDA':
+        const isEmUsoPDA = fluxoAtual.statusRealPda === 'EM_USO';
+        uiIcon.className = isEmUsoPDA ? 'ph ph-stop-circle text-6xl md:text-7xl text-orange-500 mb-3 md:mb-4 animate-pulse' : 'ph ph-play-circle text-6xl md:text-7xl text-green-500 mb-3 md:mb-4 animate-pulse';
+        uiTitle.className = `text-2xl md:text-3xl font-black mb-2 uppercase tracking-wide ${isEmUsoPDA ? 'text-orange-600' : 'text-green-600'}`;
+        uiTitle.innerText = isEmUsoPDA ? 'Finalizar Turno' : 'Iniciar Turno';
+        uiDesc.innerHTML = `Olá, <b>${getNomeCurto(fluxoAtual.operador.nome)}</b>! Para sua segurança, bipe a etiqueta do equipamento em suas mãos para confirmar a <b>${isEmUsoPDA ? 'devolução' : 'retirada'}</b>.`;
+        scannerInput.placeholder = 'BIPAR EQUIPAMENTO...';
+        uiCancelar.classList.remove('hidden');
+        break;
+
+      case 'CONFIRM_BADGE':
+        const isEmUsoBadge = fluxoAtual.pda.status === 'EM_USO';
+        uiIcon.className = isEmUsoBadge ? 'ph ph-stop-circle text-6xl md:text-7xl text-orange-500 mb-3 md:mb-4 animate-pulse' : 'ph ph-play-circle text-6xl md:text-7xl text-green-500 mb-3 md:mb-4 animate-pulse';
+        uiTitle.className = `text-2xl md:text-3xl font-black mb-2 uppercase tracking-wide ${isEmUsoBadge ? 'text-orange-600' : 'text-green-600'}`;
+        uiTitle.innerText = isEmUsoBadge ? 'Finalizar Turno' : 'Iniciar Turno';
+        uiDesc.innerHTML = `Máquina lida. Por favor, <b>bipe o seu crachá</b> para confirmar a <b>${isEmUsoBadge ? 'devolução' : 'retirada'}</b>.`;
+        scannerInput.placeholder = 'BIPAR SEU CRACHÁ...';
+        uiCancelar.classList.remove('hidden');
+        break;
+
+      case 'LINK_LIDER':
+        uiIcon.className = 'ph ph-lock-key text-6xl md:text-7xl text-red-500 mb-3 md:mb-4';
+        uiTitle.className = 'text-xl md:text-2xl font-black text-red-600 mb-2 uppercase tracking-wide';
+        uiTitle.innerText = 'Ação Bloqueada';
+        uiDesc.innerHTML = `O operador <b>${getNomeCurto(fluxoAtual.operador.nome)}</b> não possui vínculo. Bipe o crachá do Líder para autorizar uma PDA.`;
+        scannerInput.placeholder = 'CRACHÁ DO LÍDER...';
+        uiCancelar.classList.remove('hidden');
+        break;
+
+      case 'LINK_PDA':
+        uiIcon.className = 'ph ph-link text-6xl md:text-7xl text-blue-600 mb-3 md:mb-4';
+        uiTitle.className = 'text-xl md:text-2xl font-black text-blue-700 mb-2 uppercase tracking-wide';
+        uiTitle.innerText = 'Vincular Nova PDA';
+        uiDesc.innerHTML = `Líder autorizado! Bipe a PDA livre que será entregue a <b>${getNomeCurto(fluxoAtual.operador.nome)}</b>.`;
+        scannerInput.placeholder = 'NOVO EQUIPAMENTO...';
+        uiCancelar.classList.remove('hidden');
+        break;
+
+      case 'PRINT':
+        uiIcon.className = 'ph ph-printer text-6xl md:text-7xl text-purple-600 mb-3 md:mb-4';
+        uiTitle.className = 'text-xl md:text-2xl font-black text-purple-700 mb-2 uppercase tracking-wide';
+        uiTitle.innerText = 'Reimpressão de Etiqueta';
+        uiDesc.innerHTML = 'Bipe uma <b>PDA</b> ou a <b>Matrícula</b> do dono para gerar uma nova etiqueta térmica.';
+        scannerInput.placeholder = 'BIPAR PDA OU CRACHÁ...';
+        uiCancelar.classList.remove('hidden');
+        break;
+    }
+    setTimeout(() => { scannerInput.focus(); }, 100);
+  }
+
+  function forcarFocoScanner() { if(!['TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) scannerInput.focus(); }
+
+  function submeterEntrada(e) { e.preventDefault(); const codigo = scannerInput.value.trim().toUpperCase(); if (codigo !== '') { scannerInput.value = ''; processarEstado(codigo); } }
+
+  async function processarEstado(codigo) {
+    if(codigo.length < 10 && estadoQuiosque === 'IDLE') {
+      const user = dadosGlobais.usuarios.find(u => u.matricula === codigo);
+      if (user && (user.role === 'ADMIN' || user.role === 'TI')) {
+        sessionStorage.setItem('admin_token_id', user.matricula); sessionStorage.setItem('admin_token_nome', user.nome);
+        window.location.href = 'admin/chamados.html'; return;
+      }
+    }
+    switch(estadoQuiosque) {
+      case 'IDLE': await tratarLeituraInicial(codigo); break;
+      case 'CONFIRM_PDA': await validarConfirmacaoPDA(codigo); break;
+      case 'CONFIRM_BADGE': await validarConfirmacaoBadge(codigo); break;
+      case 'LINK_LIDER': await tratarAutorizacaoLider(codigo); break;
+      case 'LINK_PDA': await tratarVinculoNovaPDA(codigo); break;
+      case 'PRINT': await tratarLeituraImpressao(codigo); break;
+    }
+  }
+
+  async function tratarLeituraInicial(codigo) {
+    const pdaLida = dadosGlobais.pdas.find(p => p.patrimonio === codigo);
+    if (pdaLida) {
+      fluxoAtual.pda = pdaLida; showToast(`Máquina localizada. Aguardando identificação...`, "info"); atualizarUI('CONFIRM_BADGE'); return;
+    }
+    const usuarioLido = await buscarUsuarioAPI(codigo);
+    if (usuarioLido) {
+      if(usuarioLido.role === 'LIDER') {
+        sessionStorage.setItem('logged_matricula', usuarioLido.matricula); sessionStorage.setItem('logged_nome', usuarioLido.nome);
+        sessionStorage.setItem('logged_role', usuarioLido.role); sessionStorage.setItem('logged_setor', JSON.stringify(usuarioLido.setores));
+        sessionStorage.setItem('logged_turno', usuarioLido.turno); showToast(`A redirecionar Líder...`, "success");
+        setTimeout(() => window.location.href = 'lider/dashboard.html', 500); return;
+      }
+      fluxoAtual.operador = usuarioLido;
+      const pdaVinculada = dadosGlobais.pdas.find(p => (p.donoTurno1 && p.donoTurno1.matricula === usuarioLido.matricula) || (p.donoTurno2 && p.donoTurno2.matricula === usuarioLido.matricula));
+      if(pdaVinculada) {
+        fluxoAtual.statusRealPda = pdaVinculada.status; showToast(`Operador identificado.`, "info"); atualizarUI('CONFIRM_PDA');
+      } else {
+        showToast(`Operador sem máquina. Solicite autorização.`, "warning"); atualizarUI('LINK_LIDER');
+      }
+      return;
+    }
+    showToast("Código não reconhecido no sistema. Tente novamente.", "error");
+  }
+
+  async function validarConfirmacaoPDA(patrimonioLido) {
+    const pdaVinculada = dadosGlobais.pdas.find(p => (p.donoTurno1 && p.donoTurno1.matricula === fluxoAtual.operador.matricula) || (p.donoTurno2 && p.donoTurno2.matricula === fluxoAtual.operador.matricula));
+    if (!pdaVinculada) { showToast("Erro crítico. Vínculo não encontrado.", "error"); atualizarUI('IDLE'); return; }
+    if (pdaVinculada.patrimonio !== patrimonioLido) { showToast("AÇÃO BLOQUEADA! Este equipamento não pertence a você.", "error"); atualizarUI('IDLE'); return; }
+    fluxoAtual.pda = pdaVinculada; await processarTransacaoTurno();
+  }
+
+  async function validarConfirmacaoBadge(matriculaLida) {
+    const pda = fluxoAtual.pda;
+    const ehDono1 = pda.donoTurno1 && pda.donoTurno1.matricula === matriculaLida;
+    const ehDono2 = pda.donoTurno2 && pda.donoTurno2.matricula === matriculaLida;
+    if (!ehDono1 && !ehDono2) { showToast("AÇÃO BLOQUEADA! Você não é dono deste equipamento.", "error"); atualizarUI('IDLE'); return; }
+    fluxoAtual.operador = await buscarUsuarioAPI(matriculaLida); await processarTransacaoTurno();
+  }
+
+  async function processarTransacaoTurno() {
+    const pda = fluxoAtual.pda; const operador = fluxoAtual.operador;
+    if (pda.status === 'EM_USO') {
+      const historicoAberto = dadosGlobais.historico.find(h => h.pda.patrimonio === pda.patrimonio && h.dataDevolucao === null);
+      if (historicoAberto && historicoAberto.usuario.matricula !== operador.matricula) {
+        showToast(`BLOQUEADO: A máquina consta em uso por ${getNomeCurto(historicoAberto.usuario.nome)} (T${historicoAberto.turno}). Solicite a devolução primeiro.`, "error");
+        atualizarUI('IDLE'); return;
+      }
+      await executarEndpoint('devolver');
+    } else if (pda.status === 'ESTOQUE_SETOR' || pda.status === 'ESTOQUE_TI') {
+      await executarEndpoint('retirar');
+    } else {
+      showToast(`A máquina encontra-se em manutenção e não pode ser retirada.`, "error"); atualizarUI('IDLE');
+    }
+  }
+
+  async function executarEndpoint(acao) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/pdas/${fluxoAtual.pda.patrimonio}/${acao}?matricula=${fluxoAtual.operador.matricula}`, { method: 'POST' });
+      if(!res.ok) throw new Error((await res.json()).erro || "Falha de comunicação com o Servidor.");
+      if(acao === 'retirar') showToast(`Sucesso! Turno iniciado. PDA liberada para uso.`, "success");
+      else showToast(`Turno finalizado! Equipamento devolvido ao armário.`, "success");
+      carregarDadosGlobais(); atualizarUI('IDLE');
+    } catch (e) { showToast(e.message, "error"); atualizarUI('IDLE'); }
+  }
+
+  async function tratarAutorizacaoLider(codigo) {
+    const lider = await buscarUsuarioAPI(codigo);
+    if(!lider || lider.role !== 'LIDER') { showToast("Crachá inválido. Bipe um crachá de LÍDER.", "error"); return; }
+    fluxoAtual.liderMat = lider.matricula; showToast(`Líder autorizado!`, "success"); atualizarUI('LINK_PDA');
+  }
+
+  async function tratarVinculoNovaPDA(patrimonio) {
+    showToast("Vinculando na API...", "info");
+    try {
+      const res = await fetch(`${API_BASE_URL}/pdas/vincular?lider=${fluxoAtual.liderMat}&operador=${fluxoAtual.operador.matricula}&pda=${patrimonio}`, { method: 'POST' });
+      if(!res.ok) throw new Error((await res.json()).erro || "A PDA já possui dono neste turno ou não pertence ao seu setor.");
+      showToast(`Vinculado com sucesso a ${getNomeCurto(fluxoAtual.operador.nome)}! Gerando Etiqueta...`, "success");
+      await carregarDadosGlobais();
+      const pdaNova = dadosGlobais.pdas.find(p => p.patrimonio === patrimonio);
+      if (typeof ImpressaoService !== 'undefined' && pdaNova) { const txtFinal = ImpressaoService.gerarTextoEtiqueta(pdaNova); setTimeout(() => ImpressaoService.imprimir(txtFinal), 500); }
+      atualizarUI('IDLE');
+    } catch (e) { showToast(e.message, "error"); atualizarUI('IDLE'); }
+  }
+
+  async function tratarLeituraImpressao(codigo) {
+    const pda = dadosGlobais.pdas.find(p => p.patrimonio === codigo || (p.donoTurno1 && p.donoTurno1.matricula === codigo) || (p.donoTurno2 && p.donoTurno2.matricula === codigo));
+    if(!pda) { showToast("Nenhum equipamento ou operador encontrado.", "error"); return; }
+    if (typeof ImpressaoService !== 'undefined') { const txtFinal = ImpressaoService.gerarTextoEtiqueta(pda); showToast(`Imprimindo Etiqueta: ${txtFinal}`, "success"); ImpressaoService.imprimir(txtFinal); }
+    atualizarUI('IDLE');
+  }
+
+  async function buscarUsuarioAPI(mat) {
+    let u = dadosGlobais.usuarios.find(x => x.matricula === mat); if(u) return u;
+    try { const res = await fetch(`${API_BASE_URL}/usuarios/${mat}`); if(res.ok) return await res.json(); } catch(e) {} return null;
+  }
+
+  async function enviarChamado(e) {
+    e.preventDefault(); const btn = document.getElementById('btn-submit-chamado'); const o = btn.innerHTML;
+    btn.innerHTML = '<i class="ph ph-spinner animate-spin"></i> Enviando...'; btn.disabled = true;
+    const payload = { tipo: document.getElementById('tipo-chamado').value, prioridade: document.getElementById('prioridade-chamado').value, matricula: document.getElementById('matricula-chamado').value.trim().toUpperCase(), pda: document.getElementById('pda-chamado').value.trim().toUpperCase(), descricao: document.getElementById('descricao-chamado').value };
+    try {
+      const res = await fetch(`${API_BASE_URL}/chamados`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const data = await res.json(); if (!res.ok) throw new Error(data.erro || "Erro inesperado.");
+      showToast(`Chamado #${data.id} aberto para a T.I.!`, "success"); e.target.reset();
+    } catch (error) { showToast(error.message, "error"); } finally { btn.innerHTML = o; btn.disabled = false; scannerInput.focus(); }
+  }
+
+  const myChart = echarts.init(document.getElementById('kpi-chart'));
+  async function carregarDadosGlobais() {
+    try {
+      const [resPdas, resUsers, resHist] = await Promise.all([fetch(`${API_BASE_URL}/pdas`), fetch(`${API_BASE_URL}/usuarios`), fetch(`${API_BASE_URL}/pdas/historico`).catch(() => null)]);
+      if(resPdas.ok) dadosGlobais.pdas = await resPdas.json(); if(resUsers.ok) dadosGlobais.usuarios = await resUsers.json(); if(resHist && resHist.ok) dadosGlobais.historico = await resHist.json();
+      let totalAtivas = 0, emUso = 0, naoDevolvidas = 0; const currentHour = new Date().getHours();
+      dadosGlobais.pdas.forEach(p => {
+        if(p.status !== 'MANUTENCAO') {
+          totalAtivas++;
+          if(p.status === 'EM_USO') {
+            emUso++;
+            const histAberto = dadosGlobais.historico.find(h => h.pda.patrimonio === p.patrimonio && h.dataDevolucao === null);
+            if (histAberto) {
+              const isLateT1 = histAberto.turno === '1' && currentHour >= 15;
+              const isLateT2 = histAberto.turno === '2' && (currentHour >= 23 || currentHour < 5);
+              if (isLateT1 || isLateT2) naoDevolvidas++;
+            }
+          }
+        }
+      });
+      document.getElementById('kpi-total').innerText = totalAtivas; document.getElementById('kpi-uso').innerText = emUso; document.getElementById('kpi-nao-devolvidas').innerText = naoDevolvidas;
+      myChart.setOption({
+        tooltip: { trigger: 'item' }, legend: { bottom: '0%', left: 'center', itemWidth: 10, itemHeight: 10, textStyle: { fontSize: 11 } }, color: ['#10b981', '#ef4444', '#3b82f6'],
+        series: [{ type: 'pie', radius: ['45%', '70%'], avoidLabelOverlap: false, itemStyle: { borderRadius: 4, borderColor: '#fff', borderWidth: 2 }, label: { show: false, position: 'center' }, emphasis: { label: { show: true, fontSize: 16, fontWeight: 'bold' } }, labelLine: { show: false },
+          data: totalAtivas === 0 ? [{ value: 1, name: 'Sem Dados', itemStyle: { color: '#e5e7eb' } }] : [ { value: emUso - naoDevolvidas, name: 'Em Uso (Regular)' }, { value: naoDevolvidas, name: 'Não Devolvida (Atraso)' }, { value: totalAtivas - emUso, name: 'Livre / Armário' } ]
+        }]
+      });
+    } catch (error) { console.warn("API Offline."); }
+  }
+  window.addEventListener('resize', () => myChart.resize());
+</script>
+</body>
+</html>

@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Central de Chamados - Admin TI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 10px; }
+        @keyframes pulse-red { 0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); } 50% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); } }
+        .scanner-ring-lock { animation: pulse-red 2s infinite; }
+
+        .fade-enter { opacity: 0; transform: translateY(10px); animation: fadeIn 0.3s forwards; }
+        @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
+
+        @media (min-width: 768px) {
+            #sidebar.sidebar-collapsed { width: 5rem !important; }
+            #sidebar.sidebar-collapsed .sidebar-text { display: none !important; }
+            #sidebar.sidebar-collapsed .nav-item { justify-content: center !important; padding-left: 0 !important; padding-right: 0 !important; }
+            #sidebar.sidebar-collapsed .nav-item i { font-size: 1.75rem !important; }
+            #sidebar.sidebar-collapsed .sidebar-header { justify-content: center !important; padding-left: 0 !important; padding-right: 0 !important; }
+            #sidebar.sidebar-collapsed .sidebar-profile { justify-content: center !important; padding-left: 0 !important; padding-right: 0 !important; }
+        }
+
+        .sort-icon { display: inline-block; width: 16px; text-align: center; }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 h-screen flex font-sans overflow-hidden">
+
+<div id="toast-container" class="fixed top-10 right-4 z-[9999] flex flex-col gap-2"></div>
+
+<!-- LOCK SCREEN DE SEGURANÇA -->
+<div id="security-overlay" class="absolute inset-0 bg-slate-900 z-[100] flex flex-col items-center justify-center">
+    <div class="bg-white p-10 rounded-2xl shadow-2xl text-center max-w-md w-full relative overflow-hidden">
+        <div class="absolute top-0 left-0 w-full h-2 bg-red-600"></div>
+        <div class="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6 scanner-ring-lock">
+            <i class="ph ph-shield-warning text-4xl text-red-600"></i>
+        </div>
+        <h2 class="text-2xl font-bold text-slate-800 mb-2">Acesso Restrito</h2>
+        <p class="text-slate-500 text-sm mb-8">Bipe o seu crachá de Administrador de TI para desbloquear o sistema.</p>
+        <div class="relative">
+            <i class="ph ph-barcode absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 text-xl"></i>
+            <input type="password" id="login-scanner" autofocus class="w-full pl-12 pr-4 py-4 border-2 border-slate-300 rounded-xl text-center text-xl font-bold tracking-widest text-slate-900 placeholder-slate-300 focus:outline-none focus:ring-4 focus:ring-red-100 focus:border-red-500 bg-slate-50" placeholder="Bipe o Crachá..." autocomplete="off">
+        </div>
+        <div id="login-loading" class="hidden mt-4 text-sm font-bold text-blue-600"><i class="ph ph-spinner animate-spin inline-block mr-2"></i>Validando...</div>
+        <button onclick="window.location.href='../index.html'" class="mt-8 text-sm text-slate-400 hover:text-slate-600 font-medium flex items-center justify-center gap-2 w-full"><i class="ph ph-arrow-left"></i> Voltar para a Home</button>
+    </div>
+</div>
+
+<!-- OVERLAY MOBILE PARA O MENU -->
+<div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/50 z-30 hidden md:hidden transition-opacity"></div>
+
+<!-- SIDEBAR -->
+<aside id="sidebar" class="bg-slate-900 text-slate-300 flex flex-col h-full shadow-2xl z-40 flex-shrink-0 transition-all duration-300 fixed md:relative w-64 -translate-x-full md:translate-x-0 overflow-hidden">
+    <div class="sidebar-header p-4 bg-slate-950 border-b border-slate-800 flex items-center gap-3 shrink-0">
+        <i class="ph ph-shield-check text-blue-500 text-3xl"></i>
+        <div class="sidebar-text whitespace-nowrap"><h1 class="text-white font-bold text-lg leading-tight">Admin TI</h1><p class="text-xs text-slate-400">ID Logistics</p></div>
+    </div>
+
+    <div class="sidebar-profile px-6 py-4 bg-slate-800/50 border-b border-slate-800 flex items-center gap-3 shrink-0">
+        <div class="h-10 w-10 shrink-0 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold border-2 border-slate-700"><i class="ph ph-user"></i></div>
+        <div class="sidebar-text overflow-hidden whitespace-nowrap"><p class="text-xs text-slate-400 uppercase font-bold tracking-wider">Logado como</p><p id="admin-logged-name" class="text-white font-medium text-sm truncate">...</p></div>
+    </div>
+
+    <nav class="flex-grow py-4 flex flex-col gap-1 overflow-y-auto overflow-x-hidden">
+        <a href="chamados.html" class="nav-item bg-slate-800 text-white border-l-4 border-blue-500 flex items-center justify-between px-6 py-3 w-full text-left transition-colors font-medium whitespace-nowrap">
+            <div class="flex items-center gap-3"><i class="ph ph-ticket text-xl shrink-0"></i> <span class="sidebar-text">Chamados</span></div>
+            <span id="badge-chamados" class="sidebar-text bg-blue-600 text-white text-xs font-bold px-2 py-0.5 rounded-full hidden">0</span>
+        </a>
+        <a href="inventario.html" class="nav-item text-slate-400 hover:bg-slate-800 hover:text-white border-l-4 border-transparent flex items-center gap-3 px-6 py-3 w-full text-left transition-colors font-medium whitespace-nowrap">
+            <i class="ph ph-list-dashes text-xl shrink-0"></i> <span class="sidebar-text">Inventário</span>
+        </a>
+        <a href="historico.html" class="nav-item text-slate-400 hover:bg-slate-800 hover:text-white border-l-4 border-transparent flex items-center gap-3 px-6 py-3 w-full text-left transition-colors font-medium whitespace-nowrap">
+            <i class="ph ph-clock-counter-clockwise text-xl shrink-0"></i> <span class="sidebar-text">Histórico</span>
+        </a>
+        <a href="usuarios.html" class="nav-item text-slate-400 hover:bg-slate-800 hover:text-white border-l-4 border-transparent flex items-center gap-3 px-6 py-3 w-full text-left transition-colors font-medium whitespace-nowrap">
+            <i class="ph ph-users text-xl shrink-0"></i> <span class="sidebar-text">Gestão de Usuários</span>
+        </a>
+        <a href="setores.html" class="nav-item text-slate-400 hover:bg-slate-800 hover:text-white border-l-4 border-transparent flex items-center gap-3 px-6 py-3 w-full text-left transition-colors font-medium whitespace-nowrap">
+            <i class="ph ph-buildings text-xl shrink-0"></i> <span class="sidebar-text">Gestão de Setores</span>
+        </a>
+        <a href="equipamentos.html" class="nav-item text-slate-400 hover:bg-slate-800 hover:text-white border-l-4 border-transparent flex items-center gap-3 px-6 py-3 w-full text-left transition-colors font-medium whitespace-nowrap">
+            <i class="ph ph-devices text-xl shrink-0"></i> <span class="sidebar-text">Gest. Equipamentos</span>
+        </a>
+        <a href="../impressao.html" class="nav-item text-slate-400 hover:bg-slate-800 hover:text-white border-l-4 border-transparent flex items-center gap-3 px-6 py-3 w-full text-left transition-colors font-medium whitespace-nowrap">
+            <i class="ph ph-printer text-xl shrink-0"></i> <span class="sidebar-text">Impressão Livre</span>
+        </a>
+    </nav>
+
+    <div class="sidebar-header p-4 border-t border-slate-800 shrink-0 flex flex-col gap-2">
+        <button onclick="efetuarLogout()" title="Encerrar Sessão" class="nav-item flex items-center gap-3 text-slate-400 hover:text-red-400 transition-colors w-full whitespace-nowrap">
+            <i class="ph ph-sign-out text-xl shrink-0"></i> <span class="sidebar-text">Encerrar Sessão</span>
+        </button>
+    </div>
+</aside>
+
+<!-- ÁREA PRINCIPAL -->
+<main class="flex-grow flex flex-col h-full bg-slate-50 relative overflow-hidden min-w-0">
+
+    <header class="bg-white p-4 shadow-sm flex justify-between items-center gap-4 z-10 shrink-0">
+        <div class="flex items-center gap-4">
+            <button onclick="toggleSidebar()" class="text-slate-500 hover:text-blue-600 transition-colors focus:outline-none">
+                <i class="ph ph-list text-2xl"></i>
+            </button>
+            <h2 id="main-header-title" class="text-xl font-bold text-slate-800 truncate">Central de Chamados</h2>
+        </div>
+
+        <!-- Botão de Pesquisa Avançada -->
+        <div class="relative w-64 hidden sm:block">
+            <i class="ph ph-magnifying-glass absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
+            <input type="text" readonly onclick="abrirModalBusca()" placeholder="Pesquisa Avançada..." class="cursor-pointer pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none w-full bg-slate-50 hover:bg-white transition-colors">
+        </div>
+        <button onclick="abrirModalBusca()" class="sm:hidden text-slate-500 hover:text-blue-600"><i class="ph ph-magnifying-glass text-2xl"></i></button>
+    </header>
+
+    <div class="flex-grow overflow-auto p-4 md:p-6 relative">
+
+        <!-- VISTA 1: LISTA DE CHAMADOS E FILTROS -->
+        <div id="view-lista-chamados" class="space-y-4 fade-enter block">
+
+            <!-- Menus Suspensos de Filtro -->
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-2 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                <div class="flex flex-wrap items-center gap-4">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">T.I. Responsável (Filtro Primário)</label>
+                        <select id="filtro-ti" onchange="aplicarFiltrosTabela()" class="border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50 font-semibold text-slate-700 min-w-[200px] cursor-pointer">
+                            <option value="TODOS">Todos do Setor T.I.</option>
+                            <option value="SEM_ATRIBUICAO">Órfãos (Sem Atribuição)</option>
+                            <option value="MEUS">Somente Meus Chamados</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Fila / Status</label>
+                        <select id="filtro-status" onchange="aplicarFiltrosTabela()" class="border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50 font-semibold text-slate-700 min-w-[160px] cursor-pointer">
+                            <option value="TODOS_ATIVOS">Todas as Filas (Ativos)</option>
+                            <option value="ABERTO">Em Aberto</option>
+                            <option value="EM_ANDAMENTO">Em Andamento</option>
+                            <option value="CRITICA">Apenas Críticos</option>
+                            <option value="RESOLVIDO" class="text-green-700 font-bold">Finalizados (Fechados)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Botões da direita -->
+                <div class="flex items-center gap-2">
+                    <button onclick="limparBuscaAvancada()" id="btn-limpar-busca" class="hidden text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border border-red-200">
+                        <i class="ph ph-x"></i> Limpar Pesquisa
+                    </button>
+                    <button onclick="carregarChamados()" title="Recarregar Chamados" class="text-blue-600 hover:bg-blue-50 p-2.5 rounded-lg text-lg font-medium transition-colors border border-blue-200 shadow-sm">
+                        <i class="ph ph-arrows-clockwise"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- KPIs Dinâmicos -->
+            <div id="kpi-container" class="grid grid-cols-2 gap-4 transition-all">
+                <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-yellow-400 flex justify-between items-center transition-all">
+                    <div><p class="text-[11px] md:text-xs font-bold uppercase tracking-wider text-slate-500">Abertos</p><p id="kpi-total" class="text-lg md:text-xl font-black text-slate-800">0</p></div>
+                    <i class="ph ph-envelope-open text-2xl text-yellow-500 opacity-30"></i>
+                </div>
+                <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-red-500 flex justify-between items-center transition-all">
+                    <div><p class="text-[11px] md:text-xs font-bold uppercase tracking-wider text-slate-500">Críticos</p><p id="kpi-criticos" class="text-lg md:text-xl font-black text-red-600">0</p></div>
+                    <i class="ph ph-warning text-2xl text-red-200"></i>
+                </div>
+                <div id="kpi-card-resolvidos" class="hidden bg-white p-3 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-green-500 flex justify-between items-center transition-all">
+                    <div><p class="text-[11px] md:text-xs font-bold uppercase tracking-wider text-slate-500">Finalizados</p><p id="kpi-resolvidos" class="text-lg md:text-xl font-black text-green-600">0</p></div>
+                    <i class="ph ph-check-circle text-2xl text-green-200"></i>
+                </div>
+            </div>
+
+            <!-- Tabela Ordenável -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
+                <table class="w-full text-left border-collapse min-w-[1050px]">
+                    <thead class="bg-slate-50 text-slate-500 text-[11px] uppercase tracking-wider border-b border-slate-200">
+                    <tr>
+                        <th onclick="ordenarTabela('id')" class="p-4 font-bold cursor-pointer hover:bg-slate-200 transition-colors group">ID <span class="sort-icon" id="sort-id"></span></th>
+                        <th onclick="ordenarTabela('dataAbertura')" class="p-4 font-bold cursor-pointer hover:bg-slate-200 transition-colors group">Abertura <span class="sort-icon" id="sort-dataAbertura"></span></th>
+                        <th onclick="ordenarTabela('tipo')" class="p-4 font-bold cursor-pointer hover:bg-slate-200 transition-colors group">Tipo <span class="sort-icon" id="sort-tipo"></span></th>
+                        <th onclick="ordenarTabela('prioridade')" class="p-4 font-bold cursor-pointer hover:bg-slate-200 transition-colors group">Prioridade <span class="sort-icon" id="sort-prioridade"></span></th>
+                        <th onclick="ordenarTabela('equipamento')" class="p-4 font-bold cursor-pointer hover:bg-slate-200 transition-colors group">Equipamento <span class="sort-icon" id="sort-equipamento"></span></th>
+                        <th onclick="ordenarTabela('setor')" class="p-4 font-bold cursor-pointer hover:bg-slate-200 transition-colors group">Setor <span class="sort-icon" id="sort-setor"></span></th>
+                        <th onclick="ordenarTabela('solicitante')" class="p-4 font-bold cursor-pointer hover:bg-slate-200 transition-colors group">Solicitante <span class="sort-icon" id="sort-solicitante"></span></th>
+                        <th onclick="ordenarTabela('status')" class="p-4 font-bold cursor-pointer hover:bg-slate-200 transition-colors group">Status <span class="sort-icon" id="sort-status"></span></th>
+                        <th onclick="ordenarTabela('ti_assignado')" class="p-4 font-bold cursor-pointer hover:bg-slate-200 transition-colors group">T.I. Assignado <span class="sort-icon" id="sort-ti_assignado"></span></th>
+                    </tr>
+                    </thead>
+                    <tbody id="tbody-chamados" class="text-sm divide-y divide-slate-100">
+                    <!-- Preenchido via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- VISTA 2: DETALHES DO CHAMADO (CHAT)        -->
+        <!-- ========================================== -->
+        <div id="view-detalhe-chamado" class="hidden fade-enter h-full flex flex-col max-w-6xl mx-auto">
+            <!-- Barra de Ferramentas Superior -->
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 border-b border-slate-200 pb-4">
+                <button onclick="voltarParaLista()" class="flex items-center gap-2 text-slate-500 hover:text-blue-600 transition-colors font-medium bg-white px-4 py-2 border border-slate-200 rounded-lg shadow-sm">
+                    <i class="ph ph-arrow-left text-lg"></i> Voltar à Lista
+                </button>
+                <div class="flex items-center gap-3">
+                    <div id="detalhe-assignado-badge" class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-100 border border-slate-200 text-slate-600">
+                        <i class="ph ph-user-gear"></i> Não Atribuído
+                    </div>
+                    <span id="badge-status-atual" class="hidden sm:inline-block px-3 py-1.5 rounded-lg text-sm font-bold border">STATUS</span>
+                    <button onclick="abrirModalStatus()" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-bold transition-colors shadow-sm flex items-center gap-2">
+                        <i class="ph ph-arrows-clockwise text-lg"></i> Atualizar Status
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-grow min-h-0">
+                <!-- Coluna Esquerda: Informações Originais -->
+                <div class="lg:col-span-1 space-y-4 overflow-y-auto pr-2">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+                        <h3 class="text-lg font-bold text-slate-800 mb-4 border-b border-slate-100 pb-2 flex items-center justify-between">
+                            Dados do Ticket
+                            <span id="detalhe-id" class="text-slate-400 font-mono text-sm">#----</span>
+                        </h3>
+                        <div class="space-y-4 text-sm">
+                            <div class="grid grid-cols-2 gap-2">
+                                <div class="col-span-2">
+                                    <p class="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">Solicitante</p>
+                                    <p id="detalhe-solicitante" class="font-medium text-slate-800 flex items-center gap-2">...</p>
+                                </div>
+                                <div class="col-span-2">
+                                    <p class="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">Setor do Solicitante</p>
+                                    <p id="detalhe-setor" class="font-medium text-slate-600 flex items-center gap-2"><i class="ph ph-buildings text-slate-400"></i> ...</p>
+                                </div>
+                            </div>
+                            <div>
+                                <p class="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">Equipamento</p>
+                                <p id="detalhe-pda" class="font-mono text-blue-600 bg-blue-50 px-2 py-1 rounded inline-block border border-blue-100">PDA-...</p>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <p class="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">Prioridade</p>
+                                    <div id="detalhe-prioridade">...</div>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">Abertura</p>
+                                    <p id="detalhe-data" class="text-slate-700 text-xs mt-1">...</p>
+                                </div>
+                            </div>
+                            <div class="pt-2 border-t border-slate-100">
+                                <p class="text-xs text-slate-500 font-bold uppercase tracking-wider mb-2">Descrição Original</p>
+                                <div id="detalhe-descricao" class="bg-slate-50 p-3 rounded-lg border border-slate-200 text-slate-700 italic">...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Coluna Direita: Área de Interação (Chat) -->
+                <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col h-[500px] lg:h-full overflow-hidden">
+                    <div class="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between shrink-0">
+                        <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                            <i class="ph ph-chats-circle text-blue-600 text-xl"></i> Linha do Tempo
+                        </h3>
+                        <span class="text-xs font-medium text-slate-400">Público / T.I.</span>
+                    </div>
+                    <div id="chat-messages-container" class="flex-grow p-4 overflow-y-auto space-y-4 bg-slate-50/50"></div>
+                    <div class="p-4 border-t border-slate-200 bg-white shrink-0">
+                        <div class="flex items-center justify-end mb-3 gap-2">
+                            <input type="checkbox" id="check-msg-interna" class="w-4 h-4 text-amber-500 rounded border-slate-300 focus:ring-amber-500 cursor-pointer">
+                            <label for="check-msg-interna" class="text-[11px] font-bold text-slate-500 uppercase flex items-center gap-1 cursor-pointer select-none hover:text-slate-700 transition-colors">
+                                <i class="ph ph-lock-key text-sm text-amber-500"></i> Nota Interna (Só T.I. visualiza)
+                            </label>
+                        </div>
+                        <form id="form-mensagem" onsubmit="enviarMensagem(event)" class="flex gap-2">
+                            <input type="text" id="input-mensagem" placeholder="Escreva a sua atualização..." class="flex-grow border border-slate-300 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-colors bg-slate-50 focus:bg-white" required autocomplete="off">
+                            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg text-sm font-bold transition-colors flex items-center gap-2 shadow-sm shrink-0">
+                                <i class="ph ph-paper-plane-right text-lg"></i> Enviar
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- ========================================== -->
+<!-- MODAL: PESQUISA AVANÇADA                   -->
+<!-- ========================================== -->
+<div id="modal-busca" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex-col items-center justify-center backdrop-blur-sm transition-opacity">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden transform transition-all">
+        <div class="p-5 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+            <h3 class="font-bold text-slate-800 text-lg flex items-center gap-2">
+                <i class="ph ph-magnifying-glass text-blue-600"></i> Pesquisa Avançada
+            </h3>
+            <button onclick="fecharModalBusca()" class="text-slate-400 hover:text-red-500 transition-colors"><i class="ph ph-x text-2xl"></i></button>
+        </div>
+
+        <div class="p-6 space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">ID do Chamado</label>
+                    <input type="text" id="busca-id" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ex: 1042">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Setor do Solicitante</label>
+                    <input type="text" id="busca-setor" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ex: Inbound">
+                </div>
+                <div class="col-span-2">
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Solicitante (Nome ou Matrícula)</label>
+                    <input type="text" id="busca-solicitante" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ex: 12345 ou João">
+                </div>
+                <div class="col-span-2">
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Equipamento (Patrimônio / SN)</label>
+                    <input type="text" id="busca-equipamento" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-mono" placeholder="Ex: PDA-111">
+                </div>
+                <div class="col-span-2">
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">T.I. Assignado (Nome ou Matrícula)</label>
+                    <input type="text" id="busca-ti" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Técnico responsável...">
+                </div>
+            </div>
+        </div>
+
+        <div class="p-4 border-t border-slate-200 bg-slate-50 flex justify-end gap-3">
+            <button onclick="limparBuscaAvancada()" class="px-5 py-2 text-slate-600 font-bold hover:bg-slate-200 rounded-lg transition-colors text-sm">Limpar</button>
+            <button onclick="realizarBuscaAvancada()" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-colors text-sm flex items-center gap-2 shadow-md">
+                <i class="ph ph-magnifying-glass"></i> Buscar
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MODAL: ATUALIZAR STATUS E EQUIPAMENTO      -->
+<!-- ========================================== -->
+<div id="modal-status" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex-col items-center justify-center backdrop-blur-sm transition-opacity">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all">
+        <div class="p-5 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+            <h3 class="font-bold text-slate-800 text-lg flex items-center gap-2">
+                <i class="ph ph-arrows-clockwise text-blue-600"></i> Atualizar Ticket <span id="modal-chamado-id" class="text-blue-600"></span>
+            </h3>
+            <button onclick="fecharModalStatus()" class="text-slate-400 hover:text-red-500 transition-colors"><i class="ph ph-x text-2xl"></i></button>
+        </div>
+
+        <div class="p-6 space-y-4">
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">T.I. Responsável</label>
+                <select id="modal-select-assign" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                    <option value="">Manter Sem Atribuição (Órfão)</option>
+                    <option value="ME">Assumir Chamado (Atribuir a mim)</option>
+                </select>
+            </div>
+            <div class="h-px bg-slate-200 w-full my-2"></div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Novo Status</label>
+                <select id="modal-select-status" onchange="verificarStatusParaDestino()" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white font-semibold">
+                    <option value="ABERTO">Manter Em Aberto</option>
+                    <option value="EM_ANDAMENTO">Mover para Em Andamento</option>
+                    <option value="RESOLVIDO" class="text-green-700">Concluído / Resolvido</option>
+                </select>
+            </div>
+            <div id="div-destino-pda" class="hidden p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-2 mt-2 shadow-inner">
+                <label class="block text-xs font-bold text-blue-900 uppercase tracking-wider flex items-center gap-1"><i class="ph ph-device-mobile"></i> Destino da <span id="modal-pda-patrimonio"></span></label>
+                <select id="modal-select-destino" class="w-full border border-blue-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                    <!-- Options carregadas via JS com os nomes originais dinâmicos -->
+                </select>
+            </div>
+        </div>
+
+        <div class="p-4 border-t border-slate-200 bg-slate-50 flex justify-end gap-3">
+            <button onclick="fecharModalStatus()" class="px-5 py-2 text-slate-600 font-bold hover:bg-slate-200 rounded-lg transition-colors text-sm">Cancelar</button>
+            <button onclick="salvarNovoStatusModal()" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-colors text-sm flex items-center gap-2 shadow-md">
+                Salvar Mudanças
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- CORE SCRIPT E LÓGICA -->
+<script src="js/admin-core.js"></script>
+<script>
+    // ==========================================
+    // VARIÁVEIS GLOBAIS DE ESTADO
+    // ==========================================
+    // Removida a constante API_BASE_URL para evitar conflito com js/admin-core.js
+    let listaDeChamadosCache = [];
+    let chamadoAbertoAtualmente = null;
+    let currentSort = { field: 'id', direction: 'desc' };
+
+    let searchCriteria = { id: '', setor: '', solicitante: '', equipamento: '', ti: '' };
+
+    // Variaveis Dinamicas de Retorno da PDA
+    let setorAntigo = '';
+    let colaboradorAntigo = '';
+
+    // ==========================================
+    // CONTROLE DA SIDEBAR E INICIALIZAÇÃO
+    // ==========================================
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebar-overlay');
+        if (window.innerWidth >= 768) {
+            sidebar.classList.toggle('sidebar-collapsed');
+        } else {
+            sidebar.classList.toggle('-translate-x-full');
+            overlay.classList.toggle('hidden');
+        }
+    }
+
+    // Caso a script admin-core.js não tenha carregado corretamente (ex: no preview),
+    // criamos uma variável global temporária.
+    if (typeof API_BASE_URL === 'undefined') {
+        window.API_BASE_URL = '/api';
+        document.getElementById('security-overlay').classList.add('hidden');
+        sessionStorage.setItem('admin_token_id', '99999');
+        sessionStorage.setItem('admin_token_nome', 'Admin Master');
+        setTimeout(carregarChamados, 500);
+    }
+
+    // Aguarda a validação real do admin-core.js para carregar a API
+    document.addEventListener('AdminSessionValid', carregarChamados);
+
+    // ==========================================
+    // CARREGAMENTO REAL DA API (GET /chamados)
+    // ==========================================
+    async function carregarChamados() {
+        try {
+            // Acesso via variável global (garante compatibilidade com o admin-core.js)
+            const url = typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : window.API_BASE_URL;
+
+            // Fetch REAL para o backend Java
+            const res = await fetch(`${url}/chamados`);
+            if(!res.ok) throw new Error("Erro na requisição.");
+
+            listaDeChamadosCache = await res.json();
+            aplicarFiltrosTabela();
+        } catch(e) {
+            console.error(e);
+            document.getElementById('tbody-chamados').innerHTML = `<tr><td colspan="9" class="p-8 text-center text-red-500">Erro ao comunicar com a API. Verifique se o Spring Boot está a correr.</td></tr>`;
+        }
+    }
+
+    function aplicarFiltrosTabela() {
+        const filtroTi = document.getElementById('filtro-ti').value;
+        const filtroStatus = document.getElementById('filtro-status').value;
+        const matriculaLogada = sessionStorage.getItem('admin_token_id');
+
+        let filtrados = listaDeChamadosCache.filter(c => {
+            let passTi = true;
+            if (filtroTi === 'SEM_ATRIBUICAO') passTi = !c.tecnicoResponsavel;
+            else if (filtroTi === 'MEUS') passTi = c.tecnicoResponsavel && c.tecnicoResponsavel.matricula === matriculaLogada;
+
+            let passStatus = true;
+            if (filtroStatus === 'TODOS_ATIVOS') passStatus = c.status !== 'RESOLVIDO';
+            else if (filtroStatus === 'ABERTO') passStatus = c.status === 'ABERTO';
+            else if (filtroStatus === 'EM_ANDAMENTO') passStatus = c.status === 'EM_ANDAMENTO';
+            else if (filtroStatus === 'CRITICA') passStatus = c.prioridade === 'CRITICA' && c.status !== 'RESOLVIDO';
+            else if (filtroStatus === 'RESOLVIDO') passStatus = c.status === 'RESOLVIDO';
+
+            let passAdv = true;
+            if (searchCriteria.id) passAdv = passAdv && c.id.toString() === searchCriteria.id;
+
+            if (searchCriteria.setor) {
+                const setorStr = (c.solicitante && c.solicitante.setor) ? c.solicitante.setor.toLowerCase() : '';
+                passAdv = passAdv && setorStr.includes(searchCriteria.setor.toLowerCase());
+            }
+            if (searchCriteria.solicitante) {
+                const solStr = (c.solicitante) ? `${c.solicitante.nome} ${c.solicitante.matricula}`.toLowerCase() : '';
+                passAdv = passAdv && solStr.includes(searchCriteria.solicitante.toLowerCase());
+            }
+            if (searchCriteria.equipamento) {
+                const eqStr = (c.pda) ? c.pda.patrimonio.toLowerCase() : '';
+                passAdv = passAdv && eqStr.includes(searchCriteria.equipamento.toLowerCase());
+            }
+            if (searchCriteria.ti) {
+                const tiStr = (c.tecnicoResponsavel) ? `${c.tecnicoResponsavel.nome} ${c.tecnicoResponsavel.matricula}`.toLowerCase() : '';
+                passAdv = passAdv && tiStr.includes(searchCriteria.ti.toLowerCase());
+            }
+
+            return passTi && passStatus && passAdv;
+        });
+
+        atualizarKPIs(filtrados, filtroStatus);
+
+        filtrados.sort((a, b) => {
+            let valA = a[currentSort.field], valB = b[currentSort.field];
+            if (currentSort.field === 'equipamento') { valA = a.pda ? a.pda.patrimonio : ''; valB = b.pda ? b.pda.patrimonio : ''; }
+            else if (currentSort.field === 'setor') { valA = a.solicitante && a.solicitante.setor ? a.solicitante.setor : ''; valB = b.solicitante && b.solicitante.setor ? b.solicitante.setor : ''; }
+            else if (currentSort.field === 'solicitante') { valA = a.solicitante ? a.solicitante.nome : ''; valB = b.solicitante ? b.solicitante.nome : ''; }
+            else if (currentSort.field === 'ti_assignado') { valA = a.tecnicoResponsavel ? a.tecnicoResponsavel.nome : 'ZZZ'; valB = b.tecnicoResponsavel ? b.tecnicoResponsavel.nome : 'ZZZ'; }
+            else if (currentSort.field === 'dataAbertura') { valA = new Date(a.dataAbertura).getTime(); valB = new Date(b.dataAbertura).getTime(); }
+            else if (currentSort.field === 'prioridade') { const peso = {'CRITICA': 4, 'ALTA': 3, 'MEDIA': 2, 'BAIXA': 1}; valA = peso[a.prioridade] || 0; valB = peso[b.prioridade] || 0; }
+
+            if (valA < valB) return currentSort.direction === 'asc' ? -1 : 1;
+            if (valA > valB) return currentSort.direction === 'asc' ? 1 : -1;
+            return 0;
+        });
+
+        renderizarListaChamadosUI(filtrados);
+        atualizarIconesDeOrdenacao();
+
+        const temFiltroAvancado = Object.values(searchCriteria).some(v => v !== '');
+        document.getElementById('btn-limpar-busca').style.display = temFiltroAvancado ? 'flex' : 'none';
+    }
+
+    function atualizarKPIs(listaFiltrada, filtroStatus) {
+        let abertos = 0, criticos = 0, resolvidos = 0;
+        listaFiltrada.forEach(c => {
+            if(c.status !== 'RESOLVIDO') abertos++;
+            if((c.status !== 'RESOLVIDO') && (c.prioridade === 'CRITICA' || c.prioridade === 'ALTA')) criticos++;
+            if(c.status === 'RESOLVIDO') resolvidos++;
+        });
+
+        document.getElementById('kpi-total').innerText = abertos;
+        document.getElementById('kpi-criticos').innerText = criticos;
+        document.getElementById('kpi-resolvidos').innerText = resolvidos;
+
+        const kpiResolvidosCard = document.getElementById('kpi-card-resolvidos');
+        const kpiContainer = document.getElementById('kpi-container');
+        if (filtroStatus === 'RESOLVIDO') {
+            kpiResolvidosCard.classList.remove('hidden');
+            kpiContainer.classList.replace('grid-cols-2', 'grid-cols-3');
+        } else {
+            kpiResolvidosCard.classList.add('hidden');
+            kpiContainer.classList.replace('grid-cols-3', 'grid-cols-2');
+        }
+    }
+
+    function ordenarTabela(campo) {
+        if (currentSort.field === campo) currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+        else { currentSort.field = campo; currentSort.direction = 'asc'; }
+        aplicarFiltrosTabela();
+    }
+
+    function atualizarIconesDeOrdenacao() {
+        document.querySelectorAll('.sort-icon').forEach(icon => icon.innerHTML = '');
+        const iconHtml = currentSort.direction === 'asc' ? '<i class="ph ph-caret-up text-blue-500"></i>' : '<i class="ph ph-caret-down text-blue-500"></i>';
+        const iconElement = document.getElementById(`sort-${currentSort.field}`);
+        if (iconElement) iconElement.innerHTML = iconHtml;
+    }
+
+    function renderizarListaChamadosUI(chamados) {
+        const tbody = document.getElementById('tbody-chamados');
+        tbody.innerHTML = '';
+        if(chamados.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" class="p-8 text-center text-slate-500 italic">A combinação de filtros não retornou nenhum chamado.</td></tr>';
+            return;
+        }
+        chamados.forEach(c => {
+            const data = c.dataAbertura ? new Date(c.dataAbertura).toLocaleString('pt-BR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : '--';
+            const pdaText = c.pda ? `<span class="font-mono text-slate-700 font-semibold">${c.pda.patrimonio}</span>` : '<span class="text-slate-400">---</span>';
+            const solicitanteNome = c.solicitante ? c.solicitante.nome.split(' ')[0] : 'Desconhecido';
+            const setor = c.solicitante && c.solicitante.setor ? c.solicitante.setor : '--';
+            const tiBadge = c.tecnicoResponsavel ? `<span class="px-2 py-1 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded text-xs font-bold whitespace-nowrap"><i class="ph ph-user"></i> ${c.tecnicoResponsavel.nome.split(' ')[0]}</span>` : `<span class="px-2 py-1 bg-slate-100 text-slate-400 rounded text-[10px] font-bold uppercase tracking-wider border border-slate-200">Órfão</span>`;
+            tbody.innerHTML += `
+                    <tr onclick="abrirDetalheChamado(${c.id})" class="hover:bg-blue-50 transition-colors cursor-pointer group border-l-4 ${c.status==='RESOLVIDO' ? 'border-l-slate-200 opacity-60' : 'border-l-transparent'}">
+                        <td class="p-4 font-medium text-slate-500 group-hover:text-blue-600 transition-colors">#${c.id}</td>
+                        <td class="p-4 text-slate-500">${data}</td>
+                        <td class="p-4 text-slate-700 text-xs font-bold uppercase">${c.tipo || '--'}</td>
+                        <td class="p-4">${getBadgePrioridade(c.prioridade)}</td>
+                        <td class="p-4">${pdaText}</td>
+                        <td class="p-4 font-medium text-slate-700">${setor}</td>
+                        <td class="p-4 font-medium text-slate-800">${solicitanteNome}</td>
+                        <td class="p-4">${getBadgeStatusChamado(c.status)}</td>
+                        <td class="p-4">${tiBadge}</td>
+                    </tr>
+                `;
+        });
+    }
+
+    // ==========================================
+    // PESQUISA AVANÇADA (MODAL)
+    // ==========================================
+    function abrirModalBusca() {
+        document.getElementById('busca-id').value = searchCriteria.id;
+        document.getElementById('busca-setor').value = searchCriteria.setor;
+        document.getElementById('busca-solicitante').value = searchCriteria.solicitante;
+        document.getElementById('busca-equipamento').value = searchCriteria.equipamento;
+        document.getElementById('busca-ti').value = searchCriteria.ti;
+        document.getElementById('modal-busca').classList.replace('hidden', 'flex');
+    }
+
+    function fecharModalBusca() {
+        document.getElementById('modal-busca').classList.replace('flex', 'hidden');
+    }
+
+    function realizarBuscaAvancada() {
+        searchCriteria.id = document.getElementById('busca-id').value.trim();
+        searchCriteria.setor = document.getElementById('busca-setor').value.trim();
+        searchCriteria.solicitante = document.getElementById('busca-solicitante').value.trim();
+        searchCriteria.equipamento = document.getElementById('busca-equipamento').value.trim();
+        searchCriteria.ti = document.getElementById('busca-ti').value.trim();
+
+        fecharModalBusca();
+        aplicarFiltrosTabela();
+    }
+
+    function limparBuscaAvancada() {
+        searchCriteria = { id: '', setor: '', solicitante: '', equipamento: '', ti: '' };
+        if(!document.getElementById('modal-busca').classList.contains('hidden')) {
+            document.getElementById('busca-id').value = '';
+            document.getElementById('busca-setor').value = '';
+            document.getElementById('busca-solicitante').value = '';
+            document.getElementById('busca-equipamento').value = '';
+            document.getElementById('busca-ti').value = '';
+        }
+        fecharModalBusca();
+        aplicarFiltrosTabela();
+    }
+
+    // ==========================================
+    // TELA DE DETALHES DO CHAMADO (CHAT)
+    // ==========================================
+    async function abrirDetalheChamado(id) {
+        chamadoAbertoAtualmente = listaDeChamadosCache.find(c => c.id === id);
+        if (!chamadoAbertoAtualmente) return;
+
+        // Popula variáveis de apoio para o modal de destino da PDA
+        setorAntigo = chamadoAbertoAtualmente.solicitante && chamadoAbertoAtualmente.solicitante.setor ? chamadoAbertoAtualmente.solicitante.setor : 'Não Informado';
+        colaboradorAntigo = chamadoAbertoAtualmente.solicitante && chamadoAbertoAtualmente.solicitante.nome ? chamadoAbertoAtualmente.solicitante.nome : 'Desconhecido';
+
+        document.getElementById('main-header-title').innerText = `Ticket #${chamadoAbertoAtualmente.id}`;
+        document.getElementById('detalhe-id').innerText = `#${chamadoAbertoAtualmente.id}`;
+        document.getElementById('detalhe-solicitante').innerHTML = `<i class="ph ph-user-circle text-lg text-slate-400"></i> ${colaboradorAntigo} (${chamadoAbertoAtualmente.solicitante ? chamadoAbertoAtualmente.solicitante.matricula : '---'})`;
+        document.getElementById('detalhe-setor').innerHTML = `<i class="ph ph-buildings text-slate-400"></i> ${setorAntigo}`;
+
+        // Lógica ajustada para tornar o patrimônio da PDA clicável e redirecionar
+        if (chamadoAbertoAtualmente.pda && chamadoAbertoAtualmente.pda.patrimonio) {
+            document.getElementById('detalhe-pda').innerHTML = `<span onclick="redirecionarParaEquipamento('${chamadoAbertoAtualmente.pda.patrimonio}')" class="cursor-pointer hover:bg-blue-100 hover:underline flex items-center gap-1 transition-colors text-blue-700" title="Ir para Gestão de Equipamentos"><i class="ph ph-link text-sm"></i> ${chamadoAbertoAtualmente.pda.patrimonio}</span>`;
+        } else {
+            document.getElementById('detalhe-pda').innerText = 'Não aplicável';
+        }
+
+        document.getElementById('detalhe-prioridade').innerHTML = getBadgePrioridade(chamadoAbertoAtualmente.prioridade);
+        document.getElementById('detalhe-data').innerText = new Date(chamadoAbertoAtualmente.dataAbertura).toLocaleString('pt-BR');
+        document.getElementById('detalhe-descricao').innerText = chamadoAbertoAtualmente.descricao || 'Sem descrição fornecida.';
+
+        document.getElementById('badge-status-atual').innerHTML = getBadgeStatusChamado(chamadoAbertoAtualmente.status);
+        document.getElementById('badge-status-atual').className = `hidden sm:inline-block border px-3 py-1.5 rounded-lg text-sm bg-white shadow-sm`;
+
+        const badgeAssign = document.getElementById('detalhe-assignado-badge');
+        if(chamadoAbertoAtualmente.tecnicoResponsavel) {
+            badgeAssign.innerHTML = `<i class="ph ph-user-gear text-indigo-600"></i> Atribuído a: ${chamadoAbertoAtualmente.tecnicoResponsavel.nome}`;
+            badgeAssign.className = `hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold bg-indigo-50 border border-indigo-200 text-indigo-800 shadow-sm`;
+        } else {
+            badgeAssign.innerHTML = `<i class="ph ph-warning-circle text-amber-500"></i> Órfão (Sem T.I.)`;
+            badgeAssign.className = `hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold bg-amber-50 border border-amber-200 text-amber-700 shadow-sm`;
+        }
+
+        // LIMPA O CHAT ENQUANTO CARREGA DA API
+        const containerChat = document.getElementById('chat-messages-container');
+        containerChat.innerHTML = `<div class="flex flex-col items-center my-4"><span class="bg-slate-200 text-slate-500 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest">Abertura de Ticket • ${new Date(chamadoAbertoAtualmente.dataAbertura).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}</span></div>`;
+
+        // BUSCA MENSAGENS NA API
+        try {
+            const url = typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : window.API_BASE_URL;
+            const resMsgs = await fetch(`${url}/chamados/${id}/mensagens`);
+            if (resMsgs.ok) {
+                const mensagens = await resMsgs.json();
+                mensagens.forEach(msg => {
+                    const autorNome = msg.autor ? msg.autor.nome : 'Sistema';
+                    const isSystem = autorNome === 'Sistema';
+
+                    // Correção robusta para a desserialização do JSON (Boolean ou TinyInt)
+                    const isMsgInterna = msg.interna === true || msg.isInterna === true || msg.interna === 1 || msg.isInterna === 1;
+
+                    adicionarMensagemNoChatVisual(msg.texto, autorNome, isSystem, isMsgInterna, msg.dataHora);
+                });
+            }
+        } catch(e) {
+            console.error("Erro ao carregar mensagens:", e);
+        }
+
+        document.getElementById('view-lista-chamados').classList.replace('block', 'hidden');
+        document.getElementById('view-detalhe-chamado').classList.replace('hidden', 'flex');
+    }
+
+    function voltarParaLista() {
+        document.getElementById('main-header-title').innerText = "Central de Chamados";
+        chamadoAbertoAtualmente = null;
+        document.getElementById('view-detalhe-chamado').classList.replace('flex', 'hidden');
+        document.getElementById('view-lista-chamados').classList.replace('hidden', 'block');
+    }
+
+    function redirecionarParaEquipamento(patrimonio) {
+        // Guarda o patrimônio na sessão para a tela de Equipamentos saber o que pesquisar logo ao abrir
+        sessionStorage.setItem('pda_target_patrimonio', patrimonio);
+        window.location.href = 'equipamentos.html';
+    }
+
+    // ==========================================
+    // UPDATE REAL NA API: MODAL DE STATUS E DESTINO
+    // ==========================================
+    function abrirModalStatus() {
+        if(!chamadoAbertoAtualmente) return;
+        document.getElementById('modal-chamado-id').innerText = `#${chamadoAbertoAtualmente.id}`;
+        document.getElementById('modal-select-status').value = chamadoAbertoAtualmente.status;
+
+        const selAssign = document.getElementById('modal-select-assign');
+        if (chamadoAbertoAtualmente.tecnicoResponsavel && chamadoAbertoAtualmente.tecnicoResponsavel.matricula === sessionStorage.getItem('admin_token_id')) {
+            selAssign.value = "ME";
+        } else if (chamadoAbertoAtualmente.tecnicoResponsavel) {
+            selAssign.innerHTML = `<option value="KEEP" selected>Manter com ${chamadoAbertoAtualmente.tecnicoResponsavel.nome}</option><option value="ME">Puxar para Mim</option><option value="">Remover Atribuição</option>`;
+        } else {
+            selAssign.innerHTML = `<option value="" selected>Manter Sem Atribuição</option><option value="ME">Assumir Chamado (Atribuir a mim)</option>`;
+        }
+
+        if (chamadoAbertoAtualmente.pda && chamadoAbertoAtualmente.pda.patrimonio) {
+            document.getElementById('modal-pda-patrimonio').innerText = chamadoAbertoAtualmente.pda.patrimonio;
+
+            // Preenche dinamicamente as opções com as variáveis de setorAntigo e colaboradorAntigo
+            const nomeCurtoColaborador = colaboradorAntigo !== 'Desconhecido' ? colaboradorAntigo.split(' ')[0] : 'Colaborador';
+
+            document.getElementById('modal-select-destino').innerHTML = `
+                    <option value="" disabled selected>Onde ficará a máquina?</option>
+                    <option value="ESTOQUE_LIVRE">Deixar em Estoque Livre (T.I.)</option>
+                    <option value="MANUTENCAO">Enviar para Manutenção Externa</option>
+                    <option value="ESTOQUE_DANIFICADO">Deixar em Estoque Danificado (T.I.)</option>
+                    <option value="DEVOLVER_SETOR">Devolver ao Setor Livre (${setorAntigo})</option>
+                    <option value="DEVOLVER_COLABORADOR">Devolver diretamente para ${nomeCurtoColaborador}</option>
+                `;
+            document.getElementById('modal-select-destino').value = '';
+        }
+
+        verificarStatusParaDestino();
+        document.getElementById('modal-status').classList.replace('hidden', 'flex');
+    }
+
+    function fecharModalStatus() {
+        document.getElementById('modal-status').classList.replace('flex', 'hidden');
+    }
+
+    function verificarStatusParaDestino() {
+        const statusSelecionado = document.getElementById('modal-select-status').value;
+        const divDestino = document.getElementById('div-destino-pda');
+        if (statusSelecionado === 'RESOLVIDO' && chamadoAbertoAtualmente.pda && chamadoAbertoAtualmente.pda.patrimonio) {
+            divDestino.classList.remove('hidden');
+        } else {
+            divDestino.classList.add('hidden');
+        }
+    }
+
+    async function salvarNovoStatusModal() {
+        const novoStatus = document.getElementById('modal-select-status').value;
+        const actionAssign = document.getElementById('modal-select-assign').value;
+        const destinoPDA = document.getElementById('modal-select-destino').value;
+
+        if (novoStatus === 'RESOLVIDO' && chamadoAbertoAtualmente.pda && !destinoPDA) {
+            alert("Por favor, selecione o destino da PDA."); return;
+        }
+
+        try {
+            const url = typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : window.API_BASE_URL;
+            const payload = {
+                status: novoStatus
+            };
+
+            if (actionAssign === "ME") {
+                payload.tecnicoResponsavelMatricula = sessionStorage.getItem('admin_token_id');
+            } else if (actionAssign === "") {
+                payload.tecnicoResponsavelMatricula = ""; // Remove atribuição
+            }
+
+            if (destinoPDA) {
+                payload.destinoPDA = destinoPDA;
+            }
+
+            // DISPARA O PUT NA API
+            const response = await fetch(`${url}/chamados/${chamadoAbertoAtualmente.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if(!response.ok) {
+                const err = await response.json();
+                throw new Error(err.erro || "Erro ao atualizar chamado na API.");
+            }
+
+            // POST PARA SALVAR A MENSAGEM DO SISTEMA
+            let msgSistema = `Chamado alterado para ${novoStatus.replace('_', ' ')}.`;
+            if (novoStatus === 'RESOLVIDO' && destinoPDA) {
+                const textoDestino = document.getElementById('modal-select-destino').options[document.getElementById('modal-select-destino').selectedIndex].text;
+                msgSistema += ` Equipamento direcionado: ${textoDestino}.`;
+            }
+
+            await fetch(`${url}/chamados/${chamadoAbertoAtualmente.id}/mensagens`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    texto: msgSistema,
+                    isInterna: true,
+                    autorMatricula: sessionStorage.getItem('admin_token_id')
+                })
+            });
+
+            fecharModalStatus();
+
+            if (typeof showToast === "function") showToast(`Status atualizado com sucesso!`, "success");
+            else alert("Status atualizado com sucesso!");
+
+            // Recarrega a tabela por baixo dos panos, para quando voltarmos ela já estar fresca.
+            carregarChamados();
+
+            // Atualizamos visualmente a view atual de detalhes do chamado sem fechar a janela
+            chamadoAbertoAtualmente.status = novoStatus;
+            document.getElementById('badge-status-atual').innerHTML = getBadgeStatusChamado(novoStatus);
+
+            if (actionAssign === "ME") {
+                chamadoAbertoAtualmente.tecnicoResponsavel = { nome: sessionStorage.getItem('admin_token_nome') || 'Admin', matricula: sessionStorage.getItem('admin_token_id') };
+            } else if (actionAssign === "") {
+                chamadoAbertoAtualmente.tecnicoResponsavel = null;
+            }
+
+            const badgeAssign = document.getElementById('detalhe-assignado-badge');
+            if(chamadoAbertoAtualmente.tecnicoResponsavel) {
+                badgeAssign.innerHTML = `<i class="ph ph-user-gear text-indigo-600"></i> Atribuído a: ${chamadoAbertoAtualmente.tecnicoResponsavel.nome}`;
+                badgeAssign.className = `hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold bg-indigo-50 border border-indigo-200 text-indigo-800 shadow-sm`;
+            } else {
+                badgeAssign.innerHTML = `<i class="ph ph-warning-circle text-amber-500"></i> Órfão (Sem T.I.)`;
+                badgeAssign.className = `hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold bg-amber-50 border border-amber-200 text-amber-700 shadow-sm`;
+            }
+
+            adicionarMensagemNoChatVisual(msgSistema, 'SISTEMA', true, false);
+
+        } catch (error) {
+            if (typeof showToast === "function") showToast(error.message, "error");
+            else alert(error.message);
+        }
+    }
+
+    // ==========================================
+    // POST REAL NA API: MENSAGENS (CHAT)
+    // ==========================================
+    async function enviarMensagem(e) {
+        e.preventDefault();
+        const input = document.getElementById('input-mensagem');
+        const isInterna = document.getElementById('check-msg-interna').checked;
+        const texto = input.value.trim();
+
+        if(texto !== '') {
+            try {
+                const url = typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : window.API_BASE_URL;
+                const response = await fetch(`${url}/chamados/${chamadoAbertoAtualmente.id}/mensagens`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        texto: texto,
+                        isInterna: isInterna,
+                        autorMatricula: sessionStorage.getItem('admin_token_id')
+                    })
+                });
+
+                if(!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.erro || "Erro ao enviar mensagem.");
+                }
+
+                const msgSalva = await response.json();
+                const nomeAdmin = sessionStorage.getItem('admin_token_nome') || 'TI';
+
+                // Correção robusta para o JSON do POST
+                const isMsgInterna = msgSalva.interna === true || msgSalva.isInterna === true || msgSalva.interna === 1 || msgSalva.isInterna === 1;
+
+                adicionarMensagemNoChatVisual(msgSalva.texto, nomeAdmin, false, isMsgInterna, msgSalva.dataHora);
+
+                input.value = '';
+                document.getElementById('check-msg-interna').checked = false;
+
+            } catch (error) {
+                if (typeof showToast === "function") showToast(error.message, "error");
+                else alert(error.message);
+            }
+        }
+    }
+
+    function adicionarMensagemNoChatVisual(texto, autor, isSystem, isInterna, dataISO) {
+        const container = document.getElementById('chat-messages-container');
+        const div = document.createElement('div');
+
+        const horaStr = dataISO ? new Date(dataISO).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}) : new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
+
+        if (isSystem) {
+            div.className = "flex flex-col items-center my-4";
+            div.innerHTML = `<span class="bg-slate-200 text-slate-500 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest text-center">${texto} • ${horaStr}</span>`;
+        } else if (isInterna) {
+            div.className = "flex flex-col items-end w-full mt-4";
+            div.innerHTML = `
+                    <span class="text-[10px] text-amber-600 font-bold mr-1 mb-1 flex items-center gap-1"><i class="ph ph-lock-key"></i> NOTA INTERNA • ${autor} • ${horaStr}</span>
+                    <div class="bg-amber-100 text-amber-900 p-3 rounded-2xl rounded-tr-none text-sm shadow-sm max-w-[85%] border border-amber-300">${texto}</div>
+                `;
+        } else {
+            div.className = "flex flex-col items-end w-full mt-4";
+            div.innerHTML = `
+                    <span class="text-[10px] text-slate-400 font-bold mr-1 mb-1">${autor} • ${horaStr}</span>
+                    <div class="bg-blue-600 text-white p-3 rounded-2xl rounded-tr-none text-sm shadow-sm max-w-[85%] border border-blue-700">${texto}</div>
+                `;
+        }
+        container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
+    }
+
+    // ==========================================
+    // HELPERS VISUAIS
+    // ==========================================
+    function getBadgeStatusChamado(status) {
+        const map = { 'ABERTO': '<span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-[10px] uppercase font-bold border border-yellow-200">Em Aberto</span>', 'EM_ANDAMENTO': '<span class="px-2 py-1 bg-indigo-100 text-indigo-700 rounded text-[10px] uppercase font-bold border border-indigo-200">Andamento</span>', 'RESOLVIDO': '<span class="px-2 py-1 bg-green-100 text-green-700 rounded text-[10px] uppercase font-bold border border-green-200">Concluído</span>' };
+        return map[status] || map['ABERTO'];
+    }
+    function getBadgePrioridade(prioridade) {
+        const map = { 'BAIXA': '<span class="px-2 py-1 bg-slate-100 text-slate-600 rounded text-[10px] font-bold border border-slate-200">BAIXA</span>', 'MEDIA': '<span class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-[10px] font-bold border border-blue-200">MÉDIA</span>', 'ALTA': '<span class="px-2 py-1 bg-orange-100 text-orange-700 rounded text-[10px] font-bold border border-orange-200">ALTA</span>', 'CRITICA': '<span class="px-2 py-1 bg-red-100 text-red-700 rounded text-[10px] font-bold border border-red-200 shadow-sm animate-pulse">CRÍTICA</span>' };
+        return map[prioridade] || map['MEDIA'];
+    }
+</script>
+</body>
+</html>

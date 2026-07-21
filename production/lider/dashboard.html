@@ -1,0 +1,1553 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel do Líder - ID Logistics</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+  <!-- MOTOR DE IMPRESSÃO NATIVO (HTML/CSS -> WINDOWS) -->
+  <script src="../js/impressao.js"></script>
+
+  <style>
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 10px; }
+
+    .fade-enter { opacity: 0; transform: translateY(10px); animation: fadeIn 0.3s ease-out forwards; }
+    @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
+
+    @keyframes bounce-subtle {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    .animate-bounce-subtle { animation: bounce-subtle 2s infinite ease-in-out; }
+
+    @media (min-width: 768px) {
+      #sidebar.sidebar-collapsed { width: 5rem !important; }
+      #sidebar.sidebar-collapsed .sidebar-text { display: none !important; }
+      #sidebar.sidebar-collapsed .nav-item { justify-content: center !important; padding-left: 0 !important; padding-right: 0 !important; }
+      #sidebar.sidebar-collapsed .nav-item i { font-size: 1.75rem !important; }
+      #sidebar.sidebar-collapsed .sidebar-header { justify-content: center !important; padding-left: 0 !important; padding-right: 0 !important; }
+      #sidebar.sidebar-collapsed .sidebar-profile { justify-content: center !important; padding-left: 0 !important; padding-right: 0 !important; }
+    }
+
+    .tab-active { background-color: #1e293b; color: white; border-left: 4px solid #3b82f6; }
+    .tab-inactive { color: #94a3b8; border-left: 4px solid transparent; }
+    .tab-inactive:hover { background-color: #1e293b; color: white; }
+
+    .sort-icon { display: inline-block; width: 16px; text-align: center; }
+
+    /* ========================================================
+       CSS DE IMPRESSÃO - FORMATO 7cm x 1cm (70mm x 10mm)
+       ======================================================== */
+    #etiqueta-print-area { display: none; }
+
+    @media print {
+      /* Oculta tudo na tela de impressão, exceto a etiqueta */
+      body > main, #sidebar, #sidebar-overlay, #toast-container, .modal-overlay { display: none !important; }
+      body { background-color: white !important; margin: 0 !important; padding: 0 !important; }
+
+      /* Define a página para a Zebra */
+      @page { size: 70mm 10mm; margin: 0mm !important; }
+
+      #etiqueta-print-area {
+        display: flex !important;
+        width: 70mm; height: 10mm;
+        align-items: center; justify-content: center;
+        margin: 0 !important; padding: 0 !important;
+        box-sizing: border-box; overflow: hidden;
+      }
+
+      #etiqueta-print-texto {
+        font-family: 'Arial', sans-serif;
+        font-weight: bold; font-size: 12pt;
+        text-align: center; text-transform: uppercase;
+        white-space: nowrap; color: black; letter-spacing: 0.5px;
+      }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 h-screen flex font-sans overflow-hidden hidden" id="main-body">
+
+<!-- ÁREA FANTASMA DA ETIQUETA (Lida pelo impressao.js) -->
+<div id="etiqueta-print-area">
+  <span id="etiqueta-print-texto"></span>
+</div>
+
+<!-- UI NORMAL DO SISTEMA -->
+<div id="toast-container" class="fixed top-10 right-4 z-[9999] flex flex-col gap-2"></div>
+<div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/50 z-30 hidden md:hidden transition-opacity"></div>
+
+<!-- SIDEBAR -->
+<aside id="sidebar" class="bg-slate-900 text-slate-300 flex flex-col h-full shadow-2xl z-40 flex-shrink-0 transition-all duration-300 fixed md:relative w-64 -translate-x-full md:translate-x-0 overflow-hidden">
+  <div class="sidebar-header p-4 bg-slate-950 border-b border-slate-800 flex items-center gap-3 shrink-0">
+    <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white shadow-lg">
+      <i class="ph ph-target text-2xl"></i>
+    </div>
+    <div class="sidebar-text whitespace-nowrap"><h1 class="text-white font-bold text-lg leading-tight">Líder Op.</h1><p class="text-[10px] uppercase tracking-wider text-slate-400">ID Logistics</p></div>
+  </div>
+
+  <div class="sidebar-profile px-6 py-5 bg-slate-800/50 border-b border-slate-800 flex items-center gap-3 shrink-0">
+    <div class="h-10 w-10 shrink-0 rounded-full bg-slate-700 flex items-center justify-center text-slate-300 font-bold border border-slate-600 shadow-inner">
+      <i class="ph ph-user"></i>
+    </div>
+    <div class="sidebar-text overflow-hidden whitespace-nowrap">
+      <p id="lider-setor" class="text-[10px] text-blue-400 uppercase font-bold tracking-wider truncate mb-0.5">Setor</p>
+      <p id="lider-nome" class="text-white font-medium text-sm truncate">Carregando...</p>
+    </div>
+  </div>
+
+  <nav class="flex-grow py-4 flex flex-col gap-1 overflow-y-auto overflow-x-hidden">
+    <button onclick="switchTab('dashboard')" id="nav-dashboard" class="tab-active flex items-center gap-3 px-6 py-3.5 w-full text-left transition-all font-medium whitespace-nowrap">
+      <i class="ph ph-squares-four text-xl shrink-0"></i> <span class="sidebar-text">Painel Geral</span>
+    </button>
+    <button onclick="switchTab('inventario')" id="nav-inventario" class="tab-inactive flex items-center gap-3 px-6 py-3.5 w-full text-left transition-all font-medium whitespace-nowrap">
+      <i class="ph ph-list-dashes text-xl shrink-0"></i> <span class="sidebar-text">Meu Inventário</span>
+    </button>
+    <button onclick="switchTab('historico')" id="nav-historico" class="tab-inactive flex items-center gap-3 px-6 py-3.5 w-full text-left transition-all font-medium whitespace-nowrap">
+      <i class="ph ph-clock-counter-clockwise text-xl shrink-0"></i> <span class="sidebar-text">Histórico de Turno</span>
+    </button>
+    <button onclick="switchTab('equipe')" id="nav-equipe" class="tab-inactive flex items-center gap-3 px-6 py-3.5 w-full text-left transition-all font-medium whitespace-nowrap">
+      <i class="ph ph-users text-xl shrink-0"></i> <span class="sidebar-text">Minha Equipe</span>
+    </button>
+    <button onclick="switchTab('gerenciar')" id="nav-gerenciar" class="tab-inactive flex items-center gap-3 px-6 py-3.5 w-full text-left transition-all font-medium whitespace-nowrap">
+      <i class="ph ph-device-mobile-camera text-xl shrink-0"></i> <span class="sidebar-text">Gerenciar PDAs</span>
+    </button>
+
+    <!-- Link externo -->
+    <a href="../impressao.html" class="text-slate-400 hover:bg-slate-800 hover:text-white border-l-4 border-transparent flex items-center gap-3 px-6 py-3.5 w-full text-left transition-colors font-medium whitespace-nowrap mt-2 border-t border-slate-800 pt-4">
+      <i class="ph ph-printer text-xl shrink-0"></i> <span class="sidebar-text">Imprimir Etiquetas</span>
+    </a>
+  </nav>
+
+  <div class="sidebar-header p-4 border-t border-slate-800 shrink-0 flex flex-col gap-2">
+    <button onclick="sincronizarDadosGerais()" class="flex items-center gap-3 text-slate-400 hover:text-blue-400 transition-colors w-full px-2 py-2 rounded hover:bg-slate-800">
+      <i class="ph ph-arrows-clockwise text-xl shrink-0"></i> <span class="sidebar-text font-medium text-sm">Sincronizar Dados</span>
+    </button>
+    <button onclick="efetuarLogout()" class="flex items-center gap-3 text-slate-400 hover:text-red-400 transition-colors w-full px-2 py-2 rounded hover:bg-slate-800">
+      <i class="ph ph-sign-out text-xl shrink-0"></i> <span class="sidebar-text font-medium text-sm">Sair do Sistema</span>
+    </button>
+  </div>
+</aside>
+
+<main class="flex-grow flex flex-col h-full relative overflow-hidden min-w-0">
+  <!-- HEADER -->
+  <header class="bg-white px-6 py-4 border-b border-slate-200 flex justify-between items-center z-10 shrink-0">
+    <div class="flex items-center gap-4">
+      <button onclick="toggleSidebar()" class="text-slate-500 hover:text-blue-600 transition-colors p-1 rounded focus:outline-none focus:ring-2 focus:ring-blue-100">
+        <i class="ph ph-list text-2xl"></i>
+      </button>
+      <div>
+        <h2 id="main-header-title" class="text-xl font-bold text-slate-800 leading-tight">Painel Geral</h2>
+        <p id="main-header-subtitle" class="text-xs text-slate-500 font-medium">Visão consolidada da operação</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <button onclick="sincronizarDadosGerais()" title="Atualizar Dados" class="text-blue-600 hover:bg-blue-50 p-2 rounded-lg transition-colors border border-blue-200 shadow-sm hidden md:block">
+        <i class="ph ph-arrows-clockwise text-lg"></i>
+      </button>
+      <div class="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-full border border-slate-200">
+        <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+        <span class="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider">Online</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- CONTAINER DE VIEWS -->
+  <div class="flex-grow overflow-auto p-4 md:p-8 relative">
+
+    <!-- ========================================== -->
+    <!-- VISTA 1: DASHBOARD                         -->
+    <!-- ========================================== -->
+    <div id="view-dashboard" class="view-panel space-y-6 fade-enter block max-w-7xl mx-auto">
+
+      <!-- ALERTAS DE ATRASO (LATE RETURN) -->
+      <div id="alert-container" class="hidden flex-col gap-3 mb-4"></div>
+
+      <section>
+        <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4">Métricas Físicas do Setor</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          <!-- Cota -->
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden group">
+            <div class="absolute top-0 right-0 w-24 h-24 bg-slate-50 rounded-bl-full -z-10 transition-transform group-hover:scale-110"></div>
+            <div class="flex justify-between items-start">
+              <div><p class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Cota Física</p><p id="kpi-cota" class="text-3xl font-black text-slate-800">0</p></div>
+              <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-600"><i class="ph ph-devices text-xl"></i></div>
+            </div>
+          </div>
+          <!-- Livres -->
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden group">
+            <div class="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-bl-full -z-10 transition-transform group-hover:scale-110"></div>
+            <div class="flex justify-between items-start">
+              <div><p class="text-[11px] font-bold uppercase tracking-wider text-blue-500 mb-1">Estoque do Setor</p><p id="kpi-livres" class="text-3xl font-black text-blue-700">0</p></div>
+              <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600"><i class="ph ph-archive text-xl"></i></div>
+            </div>
+          </div>
+          <!-- Vinculadas -->
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden group">
+            <div class="absolute top-0 right-0 w-24 h-24 bg-amber-50 rounded-bl-full -z-10 transition-transform group-hover:scale-110"></div>
+            <div class="flex justify-between items-start">
+              <div><p class="text-[11px] font-bold uppercase tracking-wider text-amber-600 mb-1">Vinculadas (Armário)</p><p id="kpi-vinculadas" class="text-3xl font-black text-amber-700">0</p></div>
+              <div class="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-600"><i class="ph ph-link text-xl"></i></div>
+            </div>
+          </div>
+          <!-- Em Uso -->
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden group">
+            <div class="absolute top-0 right-0 w-24 h-24 bg-green-50 rounded-bl-full -z-10 transition-transform group-hover:scale-110"></div>
+            <div class="flex justify-between items-start">
+              <div><p class="text-[11px] font-bold uppercase tracking-wider text-green-700 mb-1">Em Uso Atual</p><p id="kpi-uso" class="text-3xl font-black text-green-700">0</p></div>
+              <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600"><i class="ph ph-user-check text-xl"></i></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="mt-8">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider">Acompanhamento de Chamados</h3>
+        </div>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse min-w-[800px]">
+              <thead class="bg-slate-50 text-slate-500 text-[11px] uppercase tracking-wider border-b border-slate-200">
+              <tr>
+                <th onclick="ordenar('chamados', 'id')" class="px-6 py-4 font-bold cursor-pointer hover:bg-slate-200 transition-colors group">Ticket <span class="sort-icon" id="sort-chamados-id"></span></th>
+                <th onclick="ordenar('chamados', 'dataAbertura')" class="px-6 py-4 font-bold cursor-pointer hover:bg-slate-200 transition-colors group">Data <span class="sort-icon" id="sort-chamados-dataAbertura"></span></th>
+                <th onclick="ordenar('chamados', 'solicitante')" class="px-6 py-4 font-bold cursor-pointer hover:bg-slate-200 transition-colors group">Solicitante <span class="sort-icon" id="sort-chamados-solicitante"></span></th>
+                <th class="px-6 py-4 font-bold">PDA</th>
+                <th class="px-6 py-4 font-bold">Resumo do Problema</th>
+                <th onclick="ordenar('chamados', 'status')" class="px-6 py-4 font-bold cursor-pointer hover:bg-slate-200 transition-colors group">Status <span class="sort-icon" id="sort-chamados-status"></span></th>
+              </tr>
+              </thead>
+              <tbody id="tbody-chamados-setor" class="text-sm divide-y divide-slate-100">
+              <!-- Preenchido via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- VISTA 2: INVENTÁRIO                        -->
+    <!-- ========================================== -->
+    <div id="view-inventario" class="view-panel hidden space-y-6 fade-enter max-w-7xl mx-auto">
+      <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
+        <div>
+          <h3 class="text-lg font-bold text-slate-800">Controle de Equipamentos</h3>
+          <p class="text-sm text-slate-500">Faça a gestão rápida das PDAs da sua cota.</p>
+        </div>
+        <div class="relative w-full md:w-72">
+          <i class="ph ph-magnifying-glass absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
+          <input type="text" id="busca-inventario" oninput="renderizarInventario()" placeholder="Buscar patrimônio ou dono..." class="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse min-w-[800px]">
+            <thead class="bg-slate-50 text-slate-500 text-[11px] uppercase tracking-wider border-b border-slate-200">
+            <tr>
+              <th onclick="ordenar('inventario', 'patrimonio')" class="px-6 py-4 font-bold cursor-pointer hover:bg-slate-200 transition-colors group">Patrimônio <span class="sort-icon" id="sort-inventario-patrimonio"></span></th>
+              <th onclick="ordenar('inventario', 'status')" class="px-6 py-4 font-bold cursor-pointer hover:bg-slate-200 transition-colors group">Status Físico <span class="sort-icon" id="sort-inventario-status"></span></th>
+              <th onclick="ordenar('inventario', 'donoTurno1')" class="px-6 py-4 font-bold cursor-pointer hover:bg-slate-200 transition-colors group">Dono (T1) <span class="sort-icon" id="sort-inventario-donoTurno1"></span></th>
+              <th onclick="ordenar('inventario', 'donoTurno2')" class="px-6 py-4 font-bold cursor-pointer hover:bg-slate-200 transition-colors group">Dono (T2) <span class="sort-icon" id="sort-inventario-donoTurno2"></span></th>
+              <th class="px-6 py-4 font-bold text-right">Ações (Meu Turno)</th>
+            </tr>
+            </thead>
+            <tbody id="tbody-inventario" class="text-sm divide-y divide-slate-100">
+            <!-- Preenchido via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- VISTA 3: HISTÓRICO DE TURNO                -->
+    <!-- ========================================== -->
+    <div id="view-historico" class="view-panel hidden space-y-6 fade-enter max-w-7xl mx-auto">
+      <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
+        <div>
+          <h3 class="text-lg font-bold text-slate-800">Histórico de Movimentação</h3>
+          <p class="text-sm text-slate-500">Veja quando a sua equipe retirou ou devolveu as PDAs.</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <input type="date" id="filtro-data-hist" class="border border-slate-300 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-blue-500" onchange="renderizarHistorico()">
+          <button onclick="sincronizarDadosGerais()" class="bg-blue-50 text-blue-600 p-2 rounded-lg hover:bg-blue-100 transition-colors" title="Atualizar Histórico">
+            <i class="ph ph-arrows-clockwise text-lg"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse min-w-[800px]">
+            <thead class="bg-slate-50 text-slate-500 text-[11px] uppercase tracking-wider border-b border-slate-200">
+            <tr>
+              <th class="px-6 py-4 font-bold">Data</th>
+              <th onclick="ordenar('historico', 'usuario')" class="px-6 py-4 font-bold cursor-pointer hover:bg-slate-200 transition-colors group">Operador <span class="sort-icon" id="sort-historico-usuario"></span></th>
+              <th onclick="ordenar('historico', 'pda')" class="px-6 py-4 font-bold cursor-pointer hover:bg-slate-200 transition-colors group">PDA <span class="sort-icon" id="sort-historico-pda"></span></th>
+              <th onclick="ordenar('historico', 'dataRetirada')" class="px-6 py-4 font-bold cursor-pointer hover:bg-slate-200 transition-colors group">Retirada (Início) <span class="sort-icon" id="sort-historico-dataRetirada"></span></th>
+              <th class="px-6 py-4 font-bold">Devolução (Fim)</th>
+              <th class="px-6 py-4 font-bold">Status do Turno</th>
+            </tr>
+            </thead>
+            <tbody id="tbody-historico" class="text-sm divide-y divide-slate-100">
+            <!-- Preenchido via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- VISTA 4: MINHA EQUIPE (CRUD COM SEPARAÇÃO) -->
+    <!-- ========================================== -->
+    <div id="view-equipe" class="view-panel hidden space-y-6 fade-enter max-w-7xl mx-auto">
+      <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
+        <div>
+          <h3 class="text-lg font-bold text-slate-800">Operadores do Setor</h3>
+          <p class="text-sm text-slate-500">Faça a gestão da sua equipe no Turno <span id="lbl-turno-equipe" class="font-bold"></span>.</p>
+        </div>
+        <div class="flex items-center gap-3 w-full md:w-auto">
+          <div class="relative flex-grow md:w-64">
+            <i class="ph ph-magnifying-glass absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
+            <input type="text" id="busca-equipe" oninput="renderizarEquipe()" placeholder="Buscar nome ou matrícula..." class="w-full pl-9 pr-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+          </div>
+          <button onclick="abrirModalUsuario()" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors shadow-sm whitespace-nowrap">
+            <i class="ph ph-user-plus text-lg"></i> Novo Operador
+          </button>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse min-w-[800px]">
+            <thead class="bg-slate-50 text-slate-500 text-[11px] uppercase tracking-wider border-b border-slate-200">
+            <tr>
+              <th onclick="ordenar('equipe', 'matricula')" class="px-6 py-4 font-bold cursor-pointer hover:bg-slate-200 transition-colors group w-1/4">Matrícula <span class="sort-icon" id="sort-equipe-matricula"></span></th>
+              <th onclick="ordenar('equipe', 'nome')" class="px-6 py-4 font-bold cursor-pointer hover:bg-slate-200 transition-colors group w-1/3">Colaborador <span class="sort-icon" id="sort-equipe-nome"></span></th>
+              <th class="px-6 py-4 font-bold w-1/4">PDA Vinculada</th>
+              <th class="px-6 py-4 font-bold text-right">Ações de Gestão</th>
+            </tr>
+            </thead>
+            <tbody id="tbody-equipe" class="text-sm divide-y divide-slate-100">
+            <!-- Preenchido via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- VISTA 5: GERENCIAR PDAs E SOLICITAÇÕES     -->
+    <!-- ========================================== -->
+    <div id="view-gerenciar" class="view-panel hidden space-y-6 fade-enter max-w-7xl mx-auto">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Vinculação Direta -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+          <div class="bg-blue-600 p-6 text-white shrink-0 relative overflow-hidden">
+            <div class="absolute -right-10 -top-10 text-white/10"><i class="ph ph-link text-9xl"></i></div>
+            <h3 class="text-xl font-bold mb-1 relative z-10">Vinculação de Máquinas</h3>
+            <p class="text-blue-100 text-sm relative z-10">Associe rapidamente uma PDA livre a um operador.</p>
+          </div>
+          <div class="p-8 flex-grow">
+            <form onsubmit="realizarAtribuicaoLivre(event)" class="space-y-5">
+              <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">1. Operador (Matrícula)</label>
+                <div class="relative">
+                  <i class="ph ph-identification-card absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 text-lg"></i>
+                  <input type="text" id="input-op-matricula-livre" required class="w-full border-2 border-slate-300 rounded-xl pl-12 pr-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors uppercase font-bold" placeholder="Bipe ou digite o crachá">
+                </div>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">2. Equipamento (Patrimônio)</label>
+                <div class="relative">
+                  <i class="ph ph-barcode absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 text-lg"></i>
+                  <input type="text" id="input-pda-patrimonio-livre" required class="w-full border-2 border-slate-300 rounded-xl pl-12 pr-4 py-3 text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors font-bold uppercase" placeholder="Bipe a etiqueta da PDA">
+                </div>
+              </div>
+              <div class="pt-2">
+                <button type="submit" id="btn-vincular-livre" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl flex justify-center items-center gap-2 transition-transform active:scale-[0.98] shadow-md">
+                  Confirmar Associação
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Chamado de TI -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+          <div class="bg-slate-800 p-6 text-white shrink-0 relative overflow-hidden">
+            <div class="absolute -right-4 -top-4 text-white/5"><i class="ph ph-headset text-9xl"></i></div>
+            <h3 class="text-xl font-bold mb-1 relative z-10">Solicitar T.I. / Mais Equipamentos</h3>
+            <p class="text-slate-300 text-sm relative z-10">Abra um ticket direto para a central de infraestrutura.</p>
+          </div>
+          <div class="p-8 flex-grow">
+            <form onsubmit="enviarSolicitacaoTI(event)" class="space-y-5">
+              <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Tipo de Requisição</label>
+                <select id="solicitacao-tipo" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none font-medium bg-white">
+                  <option value="SOLICITACAO_EQUIPAMENTO">Solicitar Mais PDAs (Nova Cota)</option>
+                  <option value="MANUTENCAO">PDA Quebrada / Sem Conserto na Base</option>
+                  <option value="INFRAESTRUTURA">Problema de Rede / Wi-Fi no Setor</option>
+                  <option value="OUTROS">Outras Solicitações</option>
+                </select>
+              </div>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Quantidade</label>
+                  <input type="number" id="solicitacao-qtd" min="1" value="1" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Prioridade</label>
+                  <select id="solicitacao-prioridade" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                    <option value="BAIXA">Baixa</option>
+                    <option value="MEDIA" selected>Média</option>
+                    <option value="ALTA">Alta</option>
+                    <option value="CRITICA">Crítica</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Justificativa / Motivo</label>
+                <textarea id="solicitacao-motivo" required rows="3" class="w-full border-2 border-slate-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none" placeholder="Explique brevemente a necessidade..."></textarea>
+              </div>
+              <div class="pt-2">
+                <button type="submit" id="btn-solicitar-ti" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3.5 rounded-xl flex justify-center items-center gap-2 transition-transform active:scale-[0.98] shadow-md">
+                  <i class="ph ph-paper-plane-right text-lg"></i> Enviar Solicitação
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- VISTA 6: DETALHES DO CHAMADO (CHAT)        -->
+    <!-- ========================================== -->
+    <div id="view-detalhe-chamado" class="hidden fade-enter h-full flex flex-col max-w-5xl mx-auto">
+      <div class="flex items-center mb-6 gap-4 border-b border-slate-200 pb-4">
+        <button onclick="voltarParaDashboardChat()" class="flex items-center gap-2 text-slate-500 hover:text-blue-600 transition-colors font-medium bg-white px-4 py-2 border border-slate-200 rounded-lg shadow-sm">
+          <i class="ph ph-arrow-left text-lg"></i> Voltar ao Painel
+        </button>
+        <span id="badge-status-atual" class="inline-block px-3 py-1.5 rounded-lg text-sm font-bold border">STATUS</span>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-grow min-h-0">
+        <div class="lg:col-span-1 space-y-4">
+          <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+            <h3 class="text-lg font-bold text-slate-800 mb-4 border-b border-slate-100 pb-3">Ticket <span id="detalhe-id" class="text-slate-400 font-mono"></span></h3>
+            <div class="space-y-4 text-sm">
+              <div><p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Equipamento</p><p id="detalhe-pda" class="font-mono font-bold text-slate-700 bg-slate-100 px-2 py-1 rounded inline-block">...</p></div>
+              <div><p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Abertura</p><p id="detalhe-data" class="font-medium text-slate-700">...</p></div>
+              <div class="pt-2 border-t border-slate-100">
+                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-2">Descrição Original</p>
+                <div id="detalhe-descricao" class="bg-slate-50 p-4 rounded-lg border border-slate-200 text-slate-700 italic">...</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col h-[500px] lg:h-full overflow-hidden">
+          <div class="p-5 border-b border-slate-100 bg-slate-50 shrink-0 flex items-center justify-between">
+            <h3 class="font-bold text-slate-800 flex items-center gap-2"><i class="ph ph-headset text-blue-600 text-xl"></i> Suporte T.I.</h3>
+            <span class="text-xs text-slate-400 font-medium">Mensagens internas da T.I. ocultas.</span>
+          </div>
+          <div id="chat-messages-container" class="flex-grow p-6 overflow-y-auto space-y-4 bg-slate-50/50"></div>
+          <div class="p-4 border-t border-slate-200 bg-white shrink-0">
+            <form id="form-mensagem" onsubmit="enviarMensagem(event)" class="flex gap-2">
+              <input type="text" id="input-mensagem" placeholder="Digite uma resposta ou adicione detalhes..." class="flex-grow border-2 border-slate-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors bg-slate-50 focus:bg-white" required autocomplete="off">
+              <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl text-sm font-bold transition-transform active:scale-95 shadow-md shrink-0">
+                <i class="ph ph-paper-plane-right text-lg"></i>
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<!-- ========================================== -->
+<!-- MODALS GERAIS (OCULTOS)                    -->
+<!-- ========================================== -->
+
+<!-- MODAL: CRUD DE USUÁRIO -->
+<div id="modal-usuario" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex-col items-center justify-center backdrop-blur-sm modal-overlay transition-opacity">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all">
+    <div class="p-6 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+      <h3 class="font-bold text-slate-800 text-lg flex items-center gap-2">
+        <i class="ph ph-user-circle text-blue-600 text-2xl"></i> <span id="modal-user-title">Novo Operador</span>
+      </h3>
+      <button onclick="fecharModalUsuario()" class="text-slate-400 hover:text-red-500 transition-colors"><i class="ph ph-x text-2xl"></i></button>
+    </div>
+
+    <form onsubmit="salvarUsuario(event)" class="p-6 space-y-5">
+      <input type="hidden" id="user-edit-id" value="">
+      <div>
+        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Matrícula / Crachá</label>
+        <input type="text" id="user-matricula" required class="w-full border-2 border-slate-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-bold text-slate-700" placeholder="Ex: 12345">
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Nome Completo</label>
+        <input type="text" id="user-nome" required class="w-full border-2 border-slate-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none uppercase" placeholder="Nome do colaborador">
+      </div>
+
+      <div class="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+        <div>
+          <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Setor de Atuação</label>
+          <select id="user-setor" required class="w-full bg-white border border-slate-300 rounded-lg p-2 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"></select>
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Turno Padrão</label>
+          <input type="text" id="user-turno" readonly class="w-full bg-slate-100 border border-slate-300 rounded-lg p-2 text-sm font-semibold text-slate-500 outline-none pointer-events-none cursor-not-allowed">
+        </div>
+      </div>
+
+      <div class="pt-4 border-t border-slate-200 flex justify-end gap-3">
+        <button type="button" onclick="fecharModalUsuario()" class="px-5 py-2.5 text-slate-600 font-bold hover:bg-slate-100 rounded-xl transition-colors text-sm">Cancelar</button>
+        <button type="submit" id="btn-save-user" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-transform active:scale-95 text-sm shadow-md">Salvar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: ATRIBUIÇÃO CRUZADA (A partir de Botão "Vincular") -->
+<div id="modal-atribuicao-cruzada" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex-col items-center justify-center backdrop-blur-sm modal-overlay transition-opacity">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all">
+    <div class="p-6 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+      <h3 class="font-bold text-slate-800 text-lg flex items-center gap-2">
+        <i class="ph ph-link text-blue-600 text-2xl"></i> Associação de Equipamento
+      </h3>
+      <button onclick="fecharModalAtribuicaoCruzada()" class="text-slate-400 hover:text-red-500 transition-colors"><i class="ph ph-x text-2xl"></i></button>
+    </div>
+
+    <form onsubmit="realizarAtribuicaoCruzada(event)" class="p-6 space-y-5">
+      <div id="box-cross-op" class="p-4 rounded-xl border-2 border-slate-200">
+        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Operador</label>
+        <select id="cross-op-select" class="w-full bg-white text-sm font-bold text-slate-800 outline-none hidden"></select>
+        <input type="text" id="cross-op-fixed" readonly class="w-full bg-transparent text-sm font-bold text-slate-800 outline-none hidden">
+      </div>
+
+      <div class="flex justify-center -my-3 relative z-10"><div class="bg-white p-1 rounded-full border border-slate-200 shadow-sm"><i class="ph ph-arrows-down-up text-slate-400"></i></div></div>
+
+      <div id="box-cross-pda" class="p-4 rounded-xl border-2 border-slate-200 bg-blue-50/30">
+        <label class="block text-xs font-bold text-blue-500 uppercase tracking-wider mb-2">Equipamento (Livre)</label>
+        <select id="cross-pda-select" class="w-full bg-transparent text-sm font-bold font-mono text-blue-800 outline-none hidden"></select>
+        <input type="text" id="cross-pda-fixed" readonly class="w-full bg-transparent text-sm font-bold font-mono text-blue-800 outline-none hidden">
+      </div>
+
+      <div class="pt-4 flex justify-end gap-3">
+        <button type="button" onclick="fecharModalAtribuicaoCruzada()" class="px-5 py-2.5 text-slate-600 font-bold hover:bg-slate-100 rounded-xl transition-colors text-sm">Cancelar</button>
+        <button type="submit" id="btn-cross-save" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-transform active:scale-95 text-sm shadow-md">Confirmar Vínculo</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: CONFIRMAÇÃO DE IMPRESSÃO (Nativa HTML) -->
+<div id="modal-print-confirm" class="fixed inset-0 bg-slate-900/70 z-[60] hidden flex-col items-center justify-center backdrop-blur-sm modal-overlay transition-opacity">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-8 text-center relative overflow-hidden">
+    <button onclick="fecharModalPrint()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><i class="ph ph-x text-xl"></i></button>
+    <div class="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-5"><i class="ph ph-printer text-4xl text-blue-600 animate-bounce-subtle"></i></div>
+
+    <h3 class="font-bold text-slate-800 text-xl mb-2">Imprimir Etiqueta?</h3>
+    <p class="text-sm text-slate-500 mb-6">Deseja imprimir a nova etiqueta térmica para a máquina <span id="modal-print-pda-nome" class="font-mono font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded"></span> agora?</p>
+
+    <!-- Aviso Prático -->
+    <div class="mb-6 bg-blue-50 border border-blue-200 text-blue-800 text-[11px] p-3 rounded-lg flex items-start gap-2 text-left leading-tight">
+      <i class="ph ph-info mt-0.5 text-base text-blue-600"></i>
+      <p>Na tela de impressão do Windows, lembre-se de configurar as <strong>"Margens"</strong> como <strong>"Nenhuma"</strong>.</p>
+    </div>
+
+    <div class="flex gap-3 w-full">
+      <button onclick="fecharModalPrint()" class="flex-1 py-3 text-slate-600 font-bold bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors text-sm">Não, pular</button>
+      <button onclick="imprimirEtiquetaConfirmada()" class="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md flex items-center justify-center gap-2 transition-transform active:scale-95 text-sm">
+        <i class="ph ph-printer text-lg"></i> Imprimir
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- SCRIPT GERAL DO DASHBOARD DO LÍDER         -->
+<!-- ========================================== -->
+<script>
+  const API_BASE_URL = '/api';
+
+  const appState = {
+    chamados: [],
+    pdas: [],
+    usuarios: [],
+    historico: [],
+    setoresLider: [],
+    turnoLider: null,
+    matriculaLider: null,
+    chamadoAbertoAtualmente: null
+  };
+
+  let pdaParaImprimirGlobal = null;
+
+  // ESTADOS DE ORDENAÇÃO
+  const sortState = {
+    chamados: { field: 'dataAbertura', direction: 'desc' },
+    inventario: { field: 'patrimonio', direction: 'asc' },
+    historico: { field: 'dataRetirada', direction: 'desc' },
+    equipe: { field: 'nome', direction: 'asc' }
+  };
+
+  // FUNÇÃO DE ABREVIAÇÃO DE NOME (Primeiro + Último)
+  function getNomeCurto(nomeCompleto) {
+    if (!nomeCompleto) return 'VAGO';
+    const partes = nomeCompleto.trim().split(' ').filter(p => p.length > 0);
+    if (partes.length === 1) return partes[0].toUpperCase();
+    return (partes[0] + ' ' + partes[partes.length - 1]).toUpperCase();
+  }
+
+  // Define data de hoje no input do histórico por defeito e carrega o painel
+  document.addEventListener('DOMContentLoaded', () => {
+    const histDataInput = document.getElementById('filtro-data-hist');
+    if (histDataInput) histDataInput.valueAsDate = new Date();
+
+    const role = sessionStorage.getItem('logged_role');
+    const nome = sessionStorage.getItem('logged_nome');
+
+    appState.turnoLider = sessionStorage.getItem('logged_turno');
+    appState.matriculaLider = sessionStorage.getItem('logged_matricula');
+    try {
+      appState.setoresLider = JSON.parse(sessionStorage.getItem('logged_setor') || '[]').map(s => s.toUpperCase());
+    } catch(e) {}
+
+    if(role !== 'LIDER' || appState.setoresLider.length === 0 || !appState.turnoLider) {
+      alert("Acesso Negado. Autentique-se como Líder.");
+      window.location.href = '../index.html';
+      return;
+    }
+
+    document.getElementById('lider-nome').innerText = getNomeCurto(nome);
+    document.querySelectorAll('#lider-setor, #lbl-setor-kpi').forEach(el => el.innerText = appState.setoresLider.join(', '));
+    document.querySelectorAll('#lbl-turno-equipe, #lbl-turno-tabela').forEach(el => el.innerText = appState.turnoLider);
+
+    document.getElementById('main-body').classList.remove('hidden');
+    sincronizarDadosGerais();
+  });
+
+  function getSetoresLider() {
+    let rawSetor = sessionStorage.getItem('logged_setor') || '';
+    try {
+      let parsed = JSON.parse(rawSetor);
+      if(Array.isArray(parsed)) return parsed.map(s => s.toUpperCase().trim());
+    } catch(e) {}
+    return rawSetor.toUpperCase().split(/[,/]/).map(s => s.trim()).filter(s => s !== '');
+  }
+
+  function showToast(message, type = 'info') {
+    const container = document.getElementById('toast-container');
+    if(!container) return;
+    const toast = document.createElement('div');
+    let bgClass = type === 'success' ? 'bg-green-600' : (type === 'error' ? 'bg-red-600' : (type === 'warning' ? 'bg-amber-500' : 'bg-blue-600'));
+    toast.className = `${bgClass} text-white px-5 py-3.5 rounded-xl shadow-lg flex items-center gap-3 mb-2 transform transition-all duration-300 translate-x-full opacity-0 text-sm font-medium z-50`;
+    toast.innerHTML = `<i class="ph ph-${type === 'success' ? 'check-circle' : 'info'} text-xl"></i> <span>${message}</span>`;
+    container.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.remove('translate-x-full', 'opacity-0'));
+    setTimeout(() => { toast.classList.add('opacity-0', 'translate-x-full'); setTimeout(() => toast.remove(), 300); }, 3000);
+  }
+
+  function efetuarLogout() {
+    sessionStorage.clear();
+    window.location.href = '../index.html';
+  }
+
+  function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('-translate-x-full');
+    document.getElementById('sidebar-overlay').classList.toggle('hidden');
+  }
+
+  function switchTab(tabId) {
+    document.querySelectorAll('.view-panel').forEach(p => {
+      p.classList.add('hidden');
+      p.classList.remove('block');
+    });
+
+    document.querySelectorAll('aside nav button').forEach(btn => {
+      btn.className = 'tab-inactive flex items-center gap-3 px-6 py-3.5 w-full text-left transition-all font-medium whitespace-nowrap';
+    });
+
+    document.getElementById('view-' + tabId).classList.remove('hidden');
+    document.getElementById('view-' + tabId).classList.add('block');
+    document.getElementById('nav-' + tabId).className = 'tab-active flex items-center gap-3 px-6 py-3.5 w-full text-left transition-all font-medium whitespace-nowrap shadow-inner';
+
+    const titulos = {
+      'dashboard': {t: 'Painel Geral', s: 'Visão consolidada da operação'},
+      'inventario': {t: 'Controle de Inventário', s: 'Equipamentos da sua cota'},
+      'historico': {t: 'Histórico de Movimentação', s: 'Registros de início e fim de turno'},
+      'equipe': {t: 'Gestão da Equipe', s: `Operadores do Turno ${appState.turnoLider}`},
+      'gerenciar': {t: 'Central de Equipamentos', s: 'Alocações e Solicitações de T.I.'}
+    };
+
+    document.getElementById('main-header-title').innerText = titulos[tabId].t;
+    document.getElementById('main-header-subtitle').innerText = titulos[tabId].s;
+
+    if(tabId === 'gerenciar') {
+      setTimeout(() => document.getElementById('input-op-matricula-livre').focus(), 100);
+    }
+    if(tabId === 'historico') {
+      renderizarHistorico();
+    }
+  }
+
+  // ==========================================
+  // ORDENAÇÃO GENÉRICA (LÍDER)
+  // ==========================================
+  function ordenar(tabela, campo) {
+    if(sortState[tabela].field === campo) {
+      sortState[tabela].direction = sortState[tabela].direction === 'asc' ? 'desc' : 'asc';
+    } else {
+      sortState[tabela].field = campo;
+      sortState[tabela].direction = 'asc';
+    }
+
+    // Re-renderiza a tabela específica
+    if(tabela === 'chamados') renderizarChamados();
+    if(tabela === 'inventario') renderizarInventario();
+    if(tabela === 'historico') renderizarHistorico();
+    if(tabela === 'equipe') renderizarEquipe();
+  }
+
+  function atualizarIcones(tabela) {
+    // Limpa todos os ícones daquela tabela
+    document.querySelectorAll(`[id^="sort-${tabela}"]`).forEach(el => el.innerHTML = '');
+    const ic = sortState[tabela].direction === 'asc' ? '<i class="ph ph-caret-up text-blue-500"></i>' : '<i class="ph ph-caret-down text-blue-500"></i>';
+    const target = document.getElementById(`sort-${tabela}-${sortState[tabela].field}`);
+    if(target) target.innerHTML = ic;
+  }
+
+  // --- SINCRONIZAÇÃO DE DADOS (API) ---
+  async function sincronizarDadosGerais() {
+    try {
+      const [resPdas, resUsuarios, resChamados, resHist] = await Promise.all([
+        fetch(`${API_BASE_URL}/pdas`),
+        fetch(`${API_BASE_URL}/usuarios`),
+        fetch(`${API_BASE_URL}/chamados`),
+        fetch(`${API_BASE_URL}/pdas/historico`).catch(() => null)
+      ]);
+
+      if(resPdas.ok) {
+        const todas = await resPdas.json();
+        appState.pdas = todas.filter(p => p.setorAlocado && appState.setoresLider.includes(p.setorAlocado.toUpperCase()));
+      }
+
+      if(resUsuarios.ok) {
+        const todosU = await resUsuarios.json();
+        // Inclui LÍDER e OPERADOR para que o Líder possa ver ele mesmo e sua equipe
+        appState.usuarios = todosU.filter(u =>
+                u.setores && u.setores.some(s => appState.setoresLider.includes(s.toUpperCase())) &&
+                u.turno === appState.turnoLider &&
+                (u.role === 'OPERADOR' || u.role === 'LIDER')
+        );
+      }
+
+      if(resChamados.ok) {
+        const todosC = await resChamados.json();
+        appState.chamados = todosC.filter(c =>
+                c.solicitante && c.solicitante.setores &&
+                c.solicitante.setores.some(s => appState.setoresLider.includes(s.toUpperCase())) &&
+                c.solicitante.turno === appState.turnoLider
+        );
+      }
+
+      if(resHist && resHist.ok) {
+        appState.historico = await resHist.json();
+      } else {
+        appState.historico = [];
+      }
+
+      renderizarDashboard();
+      renderizarInventario();
+      renderizarEquipe();
+      renderizarHistorico();
+
+    } catch(e) {
+      showToast("Erro de sincronização com Servidor.", "error");
+    }
+  }
+
+  // ==========================================
+  // RENDERIZADORES DAS TELAS
+  // ==========================================
+  function renderizarDashboard() {
+    let cota = appState.pdas.length;
+    let livres = 0, vinculadas = 0, emUso = 0;
+    let lateReturns = [];
+
+    const currentHour = new Date().getHours();
+    const isLateT1 = appState.turnoLider === '1' && currentHour >= 15;
+    const isLateT2 = appState.turnoLider === '2' && (currentHour >= 23 || currentHour < 5);
+
+    appState.pdas.forEach(p => {
+      if (p.status === 'EM_USO') {
+        const isMeuTurno = (appState.turnoLider === '1' && p.donoTurno1) || (appState.turnoLider === '2' && p.donoTurno2);
+        if (isMeuTurno) {
+          emUso++;
+          if(isLateT1 || isLateT2) lateReturns.push(p);
+        }
+      }
+      else if (p.status !== 'MANUTENCAO') {
+        if (p.donoTurno1 || p.donoTurno2) vinculadas++;
+        else livres++;
+      }
+    });
+
+    document.getElementById('kpi-cota').innerText = cota;
+    document.getElementById('kpi-livres').innerText = livres;
+    document.getElementById('kpi-vinculadas').innerText = vinculadas;
+    document.getElementById('kpi-uso').innerText = emUso;
+
+    // Alertas de Atraso
+    const alertCont = document.getElementById('alert-container');
+    alertCont.innerHTML = '';
+    if(lateReturns.length > 0) {
+      alertCont.classList.replace('hidden', 'flex');
+      lateReturns.forEach(lr => {
+        const nomeDono = getNomeCurto(appState.turnoLider === '1' ? lr.donoTurno1?.nome : lr.donoTurno2?.nome);
+        alertCont.innerHTML += `
+            <div class="bg-red-50 border border-red-200 p-4 rounded-xl shadow-sm flex items-center gap-4">
+                <div class="p-3 bg-red-100 text-red-600 rounded-full animate-pulse"><i class="ph ph-warning-circle text-2xl"></i></div>
+                <div>
+                    <h4 class="font-bold text-red-800 uppercase text-sm tracking-wider">Turno Não Finalizado!</h4>
+                    <p class="text-sm text-red-700 mt-1">O colaborador <strong class="text-red-900">${nomeDono || 'Desconhecido'}</strong> não devolveu a PDA <strong class="font-mono bg-red-200 px-1 rounded text-red-900">${lr.patrimonio}</strong> no quiosque.</p>
+                </div>
+            </div>
+        `;
+      });
+    } else {
+      alertCont.classList.replace('flex', 'hidden');
+    }
+
+    renderizarChamados();
+  }
+
+  function renderizarChamados() {
+    const tbody = document.getElementById('tbody-chamados-setor');
+    tbody.innerHTML = '';
+
+    let list = [...appState.chamados];
+
+    // Ordenação
+    list.sort((a, b) => {
+      let vA = a[sortState.chamados.field] || '';
+      let vB = b[sortState.chamados.field] || '';
+
+      if(sortState.chamados.field === 'solicitante') {
+        vA = a.solicitante ? a.solicitante.nome : '';
+        vB = b.solicitante ? b.solicitante.nome : '';
+      }
+      if(sortState.chamados.field === 'dataAbertura') {
+        vA = new Date(a.dataAbertura).getTime();
+        vB = new Date(b.dataAbertura).getTime();
+      }
+
+      if(vA < vB) return sortState.chamados.direction === 'asc' ? -1 : 1;
+      if(vA > vB) return sortState.chamados.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    if(list.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center text-slate-500 italic">Nenhum chamado aberto pela sua equipe.</td></tr>';
+    } else {
+      list.forEach(c => {
+        const data = c.dataAbertura ? new Date(c.dataAbertura).toLocaleDateString('pt-BR') : '--';
+        const pda = c.pda ? `<span class="font-mono font-bold">${c.pda.patrimonio}</span>` : '<span class="text-slate-400">---</span>';
+        const nome = c.solicitante ? getNomeCurto(c.solicitante.nome) : '---';
+        const desc = c.descricao.length > 40 ? c.descricao.substring(0,40) + '...' : c.descricao;
+
+        tbody.innerHTML += `
+            <tr onclick="abrirDetalhesChamado(${c.id})" class="hover:bg-blue-50 transition-colors cursor-pointer border-l-4 ${c.status==='RESOLVIDO' ? 'border-l-slate-200 opacity-60' : 'border-l-transparent'}">
+                <td class="px-6 py-4 font-medium text-slate-500">#${c.id}</td>
+                <td class="px-6 py-4 text-slate-500">${data}</td>
+                <td class="px-6 py-4 text-slate-800 font-medium">${nome}</td>
+                <td class="px-6 py-4 text-slate-700">${pda}</td>
+                <td class="px-6 py-4 text-slate-600 italic" title="${c.descricao}">${desc}</td>
+                <td class="px-6 py-4">${getBadgeStatusChamado(c.status)}</td>
+            </tr>
+        `;
+      });
+    }
+    atualizarIcones('chamados');
+  }
+
+  function renderizarInventario() {
+    const query = document.getElementById('busca-inventario') ? document.getElementById('busca-inventario').value.toLowerCase() : '';
+    const tbody = document.getElementById('tbody-inventario');
+    tbody.innerHTML = '';
+
+    let filtrados = appState.pdas.filter(p =>
+            p.patrimonio.toLowerCase().includes(query) ||
+            (p.donoTurno1 && p.donoTurno1.nome.toLowerCase().includes(query)) ||
+            (p.donoTurno2 && p.donoTurno2.nome.toLowerCase().includes(query))
+    );
+
+    // Ordenação
+    filtrados.sort((a, b) => {
+      let vA = a[sortState.inventario.field] || '';
+      let vB = b[sortState.inventario.field] || '';
+
+      if(sortState.inventario.field === 'donoTurno1') {
+        vA = a.donoTurno1 ? a.donoTurno1.nome : '';
+        vB = b.donoTurno1 ? b.donoTurno1.nome : '';
+      }
+      if(sortState.inventario.field === 'donoTurno2') {
+        vA = a.donoTurno2 ? a.donoTurno2.nome : '';
+        vB = b.donoTurno2 ? b.donoTurno2.nome : '';
+      }
+
+      if(vA < vB) return sortState.inventario.direction === 'asc' ? -1 : 1;
+      if(vA > vB) return sortState.inventario.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    if(filtrados.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-500">Nenhum equipamento encontrado.</td></tr>';
+      atualizarIcones('inventario');
+      return;
+    }
+
+    filtrados.forEach(p => {
+      const isT1 = appState.turnoLider === '1';
+      const isT2 = appState.turnoLider === '2';
+      const donoAtual = isT1 ? p.donoTurno1 : p.donoTurno2;
+      const livreParaMim = !donoAtual && p.status !== 'MANUTENCAO';
+
+      let actionHtml = '';
+      let printBtn = `<button onclick="iniciarImpressaoPDA('${p.patrimonio}')" class="p-2 text-slate-500 hover:text-blue-600 bg-slate-100 hover:bg-blue-100 rounded transition-colors shadow-sm" title="Imprimir Etiqueta ZPL"><i class="ph ph-printer text-lg"></i></button>`;
+
+      if(donoAtual) {
+        actionHtml = `
+            <div class="flex gap-2 justify-end items-center">
+                ${printBtn}
+                <button onclick="desvincularPda('${p.patrimonio}')" class="text-xs bg-red-50 hover:bg-red-100 text-red-600 font-bold px-3 py-2 rounded border border-red-200 transition-colors shadow-sm">Desvincular</button>
+            </div>
+        `;
+      } else if(livreParaMim) {
+        actionHtml = `
+            <div class="flex gap-2 justify-end items-center">
+                ${printBtn}
+                <button onclick="abrirModalAtribuicaoCruzada(null, '${p.patrimonio}')" class="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold px-3 py-2 rounded border border-blue-200 transition-colors shadow-sm">Vincular</button>
+            </div>
+        `;
+      } else {
+        actionHtml = `
+            <div class="flex gap-2 justify-end items-center">
+                ${printBtn}
+                <span class="text-xs text-slate-400 italic flex items-center gap-1"><i class="ph ph-wrench"></i> Em Manutenção</span>
+            </div>
+        `;
+      }
+
+      const d1 = p.donoTurno1 ? getNomeCurto(p.donoTurno1.nome) : '<span class="text-slate-300">Vago</span>';
+      const d2 = p.donoTurno2 ? getNomeCurto(p.donoTurno2.nome) : '<span class="text-slate-300">Vago</span>';
+
+      tbody.innerHTML += `
+        <tr class="hover:bg-slate-50 transition-colors border-l-4 ${donoAtual ? 'border-l-amber-400' : 'border-l-transparent'}">
+            <td class="px-6 py-4 font-bold text-slate-800 font-mono">${p.patrimonio}</td>
+            <td class="px-6 py-4">${getBadgeStatusPda(p.status)}</td>
+            <td class="px-6 py-4 text-slate-600 ${isT1 ? 'font-bold text-blue-600 bg-blue-50/30 rounded' : ''}">${d1}</td>
+            <td class="px-6 py-4 text-slate-600 ${isT2 ? 'font-bold text-blue-600 bg-blue-50/30 rounded' : ''}">${d2}</td>
+            <td class="px-6 py-3 align-middle">${actionHtml}</td>
+        </tr>
+      `;
+    });
+
+    atualizarIcones('inventario');
+  }
+
+  function renderizarHistorico() {
+    const dataElement = document.getElementById('filtro-data-hist');
+    if(!dataElement) return;
+
+    const dataFiltro = dataElement.value;
+    const tbody = document.getElementById('tbody-historico');
+    tbody.innerHTML = '';
+
+    if (appState.historico.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center text-slate-500">Nenhum histórico encontrado.</td></tr>';
+      return;
+    }
+
+    let histFiltrado = appState.historico.filter(h => {
+      const belongsToLeader = h.usuario && h.usuario.setores && h.usuario.setores.some(s => appState.setoresLider.includes(s.toUpperCase())) && h.turno === appState.turnoLider;
+      const isSameDate = h.dataRetirada && h.dataRetirada.startsWith(dataFiltro);
+      return belongsToLeader && isSameDate;
+    });
+
+    // Ordenação
+    histFiltrado.sort((a,b) => {
+      let vA = a[sortState.historico.field];
+      let vB = b[sortState.historico.field];
+
+      if(sortState.historico.field === 'usuario') {
+        vA = a.usuario.nome;
+        vB = b.usuario.nome;
+      }
+      if(sortState.historico.field === 'pda') {
+        vA = a.pda.patrimonio;
+        vB = b.pda.patrimonio;
+      }
+      if(sortState.historico.field === 'dataRetirada') {
+        vA = new Date(a.dataRetirada).getTime();
+        vB = new Date(b.dataRetirada).getTime();
+      }
+
+      if(vA < vB) return sortState.historico.direction === 'asc' ? -1 : 1;
+      if(vA > vB) return sortState.historico.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    if(histFiltrado.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center text-slate-500">Nenhuma movimentação registrada na data selecionada.</td></tr>';
+      atualizarIcones('historico');
+      return;
+    }
+
+    histFiltrado.forEach(h => {
+      const dataFormatada = dataFiltro.split('-').reverse().join('/');
+      const ret = new Date(h.dataRetirada).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
+      const dev = h.dataDevolucao ? new Date(h.dataDevolucao).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}) : '<span class="text-amber-500 font-bold animate-pulse">Na Operação</span>';
+      const statusStr = h.dataDevolucao ? '<span class="text-green-600 font-bold bg-green-50 px-2 py-1 rounded text-xs border border-green-200">Devolvido</span>' : '<span class="text-amber-600 font-bold bg-amber-50 px-2 py-1 rounded text-xs border border-amber-200">Em Uso</span>';
+
+      tbody.innerHTML += `
+        <tr class="hover:bg-slate-50">
+            <td class="px-6 py-4 text-slate-600 font-medium">${dataFormatada}</td>
+            <td class="px-6 py-4 font-bold text-slate-800">${getNomeCurto(h.usuario.nome)} <span class="text-xs font-normal text-slate-400">(${h.usuario.matricula})</span></td>
+            <td class="px-6 py-4 font-mono text-blue-600 font-bold">${h.pda.patrimonio}</td>
+            <td class="px-6 py-4 text-slate-600">${ret}</td>
+            <td class="px-6 py-4">${dev}</td>
+            <td class="px-6 py-4">${statusStr}</td>
+        </tr>
+      `;
+    });
+
+    atualizarIcones('historico');
+  }
+
+  function renderizarEquipe() {
+    const query = document.getElementById('busca-equipe') ? document.getElementById('busca-equipe').value.toLowerCase() : '';
+    const tbody = document.getElementById('tbody-equipe');
+    tbody.innerHTML = '';
+
+    let filtrados = appState.usuarios.filter(u =>
+            u.nome.toLowerCase().includes(query) || u.matricula.toLowerCase().includes(query)
+    );
+
+    // Ordenação
+    filtrados.sort((a,b) => {
+      let vA = a[sortState.equipe.field];
+      let vB = b[sortState.equipe.field];
+
+      if(vA < vB) return sortState.equipe.direction === 'asc' ? -1 : 1;
+      if(vA > vB) return sortState.equipe.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    if(filtrados.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" class="px-6 py-8 text-center text-slate-500">Nenhum operador encontrado.</td></tr>';
+      atualizarIcones('equipe');
+      return;
+    }
+
+    appState.setoresLider.forEach(setor => {
+      const equipeSetor = filtrados.filter(u => u.setores && u.setores.includes(setor));
+
+      if(equipeSetor.length > 0) {
+        tbody.innerHTML += `
+            <tr class="bg-slate-100/70 border-y border-slate-200">
+                <td colspan="4" class="px-6 py-3 font-bold text-slate-700 text-xs uppercase tracking-wider">
+                    <i class="ph ph-buildings mr-1 text-blue-600 text-base align-middle"></i> Equipe: ${setor}
+                </td>
+            </tr>
+        `;
+
+        equipeSetor.forEach(u => {
+          const pdaVinculada = appState.pdas.find(p =>
+                  (appState.turnoLider === '1' && p.donoTurno1 && p.donoTurno1.matricula === u.matricula) ||
+                  (appState.turnoLider === '2' && p.donoTurno2 && p.donoTurno2.matricula === u.matricula)
+          );
+
+          let pdaHtml = '';
+          let actionButtons = '';
+
+          if (pdaVinculada) {
+            pdaHtml = `<span class="font-mono font-bold text-slate-700 bg-slate-200 border border-slate-300 px-2 py-1 rounded">${pdaVinculada.patrimonio}</span>`;
+
+            actionButtons = `
+                <button onclick="iniciarImpressaoPDA('${pdaVinculada.patrimonio}')" class="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-200 rounded transition-colors shadow-sm border border-slate-200" title="Imprimir Etiqueta ZPL"><i class="ph ph-printer text-lg"></i></button>
+                <button onclick="desvincularPda('${pdaVinculada.patrimonio}')" class="p-2 text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded transition-colors shadow-sm border border-red-200 ml-1" title="Remover PDA deste Operador"><i class="ph ph-x-circle text-lg"></i></button>
+            `;
+          } else {
+            pdaHtml = `<span class="text-xs text-slate-400 italic">Sem Equipamento</span>`;
+
+            actionButtons = `
+                <button onclick="abrirModalAtribuicaoCruzada('${u.matricula}', null)" class="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold px-3 py-2 rounded border border-blue-200 transition-colors shadow-sm">Atribuir PDA</button>
+            `;
+          }
+
+          let badgeRole = u.role === 'LIDER' ? '<i class="ph ph-star text-blue-500 ml-1" title="Líder"></i>' : '';
+
+          // Botões de sistema para todos
+          actionButtons += `
+              <button onclick="abrirModalEditarUsuario('${u.matricula}')" class="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors ml-2" title="Editar Operador"><i class="ph ph-pencil-simple text-lg"></i></button>
+              <button onclick="excluirUsuario('${u.matricula}')" class="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors" title="Inativar Colaborador"><i class="ph ph-trash text-lg"></i></button>
+          `;
+
+          tbody.innerHTML += `
+            <tr class="hover:bg-white transition-colors">
+                <td class="px-6 py-4 font-bold text-slate-700">${u.matricula}</td>
+                <td class="px-6 py-4 font-medium text-slate-900 flex items-center">${getNomeCurto(u.nome)} ${badgeRole}</td>
+                <td class="px-6 py-4">${pdaHtml}</td>
+                <td class="px-6 py-4 text-right">
+                    <div class="flex justify-end items-center gap-1.5">
+                        ${actionButtons}
+                    </div>
+                </td>
+            </tr>
+          `;
+        });
+      }
+    });
+
+    atualizarIcones('equipe');
+  }
+
+  // ==========================================
+  // AÇÕES: USUÁRIOS (CRUD NATIVO)
+  // ==========================================
+  function abrirModalUsuario() {
+    document.getElementById('modal-user-title').innerText = 'Novo Operador';
+    document.getElementById('user-edit-id').value = '';
+    document.getElementById('user-matricula').value = '';
+    document.getElementById('user-matricula').readOnly = false;
+    document.getElementById('user-nome').value = '';
+
+    const selSetor = document.getElementById('user-setor');
+    selSetor.innerHTML = '';
+    appState.setoresLider.forEach(s => selSetor.innerHTML += `<option value="${s}">${s}</option>`);
+
+    document.getElementById('user-turno').value = appState.turnoLider;
+    document.getElementById('modal-usuario').classList.replace('hidden', 'flex');
+    setTimeout(() => document.getElementById('user-matricula').focus(), 100);
+  }
+
+  function abrirModalEditarUsuario(matricula) {
+    const u = appState.usuarios.find(x => x.matricula === matricula);
+    if(!u) return;
+
+    document.getElementById('modal-user-title').innerText = 'Editar Operador';
+    document.getElementById('user-edit-id').value = u.id;
+    document.getElementById('user-matricula').value = u.matricula;
+    document.getElementById('user-matricula').readOnly = true;
+    document.getElementById('user-nome').value = u.nome;
+
+    const selSetor = document.getElementById('user-setor');
+    selSetor.innerHTML = '';
+    appState.setoresLider.forEach(s => {
+      const isSelected = (u.setores && u.setores.includes(s)) ? 'selected' : '';
+      selSetor.innerHTML += `<option value="${s}" ${isSelected}>${s}</option>`;
+    });
+
+    document.getElementById('user-turno').value = u.turno;
+    document.getElementById('modal-usuario').classList.replace('hidden', 'flex');
+  }
+
+  function fecharModalUsuario() {
+    document.getElementById('modal-usuario').classList.replace('flex', 'hidden');
+  }
+
+  async function salvarUsuario(e) {
+    e.preventDefault();
+    const id = document.getElementById('user-edit-id').value;
+    const btn = document.getElementById('btn-save-user');
+
+    const payload = {
+      matricula: document.getElementById('user-matricula').value.trim().toUpperCase(),
+      nome: document.getElementById('user-nome').value.trim().toUpperCase(),
+      role: 'OPERADOR', // Líder cadastra como operador por padrão
+      setores: [document.getElementById('user-setor').value],
+      turno: document.getElementById('user-turno').value
+    };
+
+    try {
+      btn.disabled = true;
+      btn.innerHTML = `<i class="ph ph-spinner animate-spin"></i> A Gravar...`;
+
+      const url = id ? `${API_BASE_URL}/usuarios/${id}` : `${API_BASE_URL}/usuarios`;
+      const method = id ? 'PUT' : 'POST';
+
+      const res = await fetch(url, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      if(!res.ok) {
+        const err = await res.json();
+        throw new Error(err.erro || "Erro de API.");
+      }
+
+      showToast(`Operador ${id ? 'atualizado' : 'cadastrado'} com sucesso!`, 'success');
+      fecharModalUsuario();
+      sincronizarDadosGerais();
+    } catch (error) {
+      showToast(error.message, "error");
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = `Salvar`;
+    }
+  }
+
+  async function excluirUsuario(matricula) {
+    if(!confirm(`Confirma a inativação permanente da matrícula ${matricula}?`)) return;
+
+    const u = appState.usuarios.find(x => x.matricula === matricula);
+    if(!u) return;
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/usuarios/${u.id}`, { method: 'DELETE' });
+      if(!res.ok) throw new Error("A API rejeitou a exclusão.");
+
+      showToast("Colaborador removido da sua equipa.", "success");
+      sincronizarDadosGerais();
+    } catch(e) {
+      showToast(e.message, "error");
+    }
+  }
+
+  // ==========================================
+  // AÇÕES: VÍNCULOS E DESVÍNCULOS
+  // ==========================================
+  async function realizarAtribuicaoLivre(e) {
+    e.preventDefault();
+    const opMatricula = document.getElementById('input-op-matricula-livre').value.trim().toUpperCase();
+    const pdaPatrimonio = document.getElementById('input-pda-patrimonio-livre').value.trim().toUpperCase();
+    await processarVinculo(opMatricula, pdaPatrimonio, 'btn-vincular-livre', true);
+  }
+
+  function abrirModalAtribuicaoCruzada(matriculaFixa = null, pdaFixa = null) {
+    const opSelect = document.getElementById('cross-op-select');
+    const opFixed = document.getElementById('cross-op-fixed');
+    const pdaSelect = document.getElementById('cross-pda-select');
+    const pdaFixed = document.getElementById('cross-pda-fixed');
+
+    opSelect.innerHTML = '<option value="" disabled selected>Selecione o Operador...</option>';
+    appState.usuarios.forEach(u => opSelect.innerHTML += `<option value="${u.matricula}">${getNomeCurto(u.nome)} (${u.matricula})</option>`);
+
+    pdaSelect.innerHTML = '<option value="" disabled selected>Selecione a PDA livre...</option>';
+    const pdasLivres = appState.pdas.filter(p => p.status !== 'MANUTENCAO' && ((appState.turnoLider === '1' && !p.donoTurno1) || (appState.turnoLider === '2' && !p.donoTurno2)));
+    pdasLivres.forEach(p => pdaSelect.innerHTML += `<option value="${p.patrimonio}">${p.patrimonio}</option>`);
+
+    if(matriculaFixa) {
+      const u = appState.usuarios.find(u => u.matricula === matriculaFixa);
+      const nome = u ? getNomeCurto(u.nome) : matriculaFixa;
+
+      opFixed.value = `${nome} (${matriculaFixa})`;
+      opFixed.dataset.val = matriculaFixa;
+      opFixed.classList.remove('hidden');
+      opSelect.classList.add('hidden');
+
+      pdaSelect.classList.remove('hidden');
+      pdaFixed.classList.add('hidden');
+    } else if (pdaFixa) {
+      pdaFixed.value = pdaFixa;
+      pdaFixed.dataset.val = pdaFixa;
+      pdaFixed.classList.remove('hidden');
+      pdaSelect.classList.add('hidden');
+
+      opSelect.classList.remove('hidden');
+      opFixed.classList.add('hidden');
+    }
+
+    document.getElementById('modal-atribuicao-cruzada').classList.replace('hidden', 'flex');
+  }
+
+  function fecharModalAtribuicaoCruzada() {
+    document.getElementById('modal-atribuicao-cruzada').classList.replace('flex', 'hidden');
+  }
+
+  async function realizarAtribuicaoCruzada(e) {
+    e.preventDefault();
+    const opFixed = document.getElementById('cross-op-fixed');
+    const opSelect = document.getElementById('cross-op-select');
+    const opMatricula = (!opFixed.classList.contains('hidden')) ? opFixed.dataset.val : opSelect.value;
+
+    const pdaFixed = document.getElementById('cross-pda-fixed');
+    const pdaSelect = document.getElementById('cross-pda-select');
+    const pdaPatrimonio = (!pdaFixed.classList.contains('hidden')) ? pdaFixed.dataset.val : pdaSelect.value;
+
+    if(!opMatricula || !pdaPatrimonio) {
+      showToast("Preencha Operador e Máquina.", "warning");
+      return;
+    }
+
+    await processarVinculo(opMatricula, pdaPatrimonio, 'btn-cross-save', false);
+    fecharModalAtribuicaoCruzada();
+  }
+
+  async function processarVinculo(opMatricula, pdaPatrimonio, btnId, clearInputs = false) {
+    const btn = document.getElementById(btnId);
+    const originalText = btn.innerHTML;
+    try {
+      btn.disabled = true;
+      btn.innerHTML = `<i class="ph ph-spinner animate-spin"></i> A ligar na API...`;
+
+      const response = await fetch(`${API_BASE_URL}/pdas/vincular?lider=${appState.matriculaLider}&operador=${opMatricula}&pda=${pdaPatrimonio}`, { method: 'POST' });
+      if(!response.ok) {
+        const err = await response.json();
+        throw new Error(err.erro || "Falha ao vincular na API.");
+      }
+
+      showToast(`Sucesso! PDA ${pdaPatrimonio} associada a ${opMatricula}.`, "success");
+      if(clearInputs) {
+        document.getElementById('input-op-matricula-livre').value = '';
+        document.getElementById('input-pda-patrimonio-livre').value = '';
+        document.getElementById('input-op-matricula-livre').focus();
+      }
+
+      await sincronizarDadosGerais();
+      iniciarImpressaoPDA(pdaPatrimonio);
+
+    } catch (error) {
+      showToast(error.message, "error");
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+    }
+  }
+
+  async function desvincularPda(patrimonio) {
+    if(!confirm(`Remover a PDA ${patrimonio} do operador neste turno?`)) return;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/pdas/desvincular?pda=${patrimonio}&turno=${appState.turnoLider}`, {
+        method: 'POST'
+      });
+
+      if(!response.ok) {
+        const err = await response.json();
+        throw new Error(err.erro || "A API rejeitou a desvinculação.");
+      }
+
+      showToast("Vínculo removido. PDA devolvida ao armário.", "success");
+      await sincronizarDadosGerais();
+      iniciarImpressaoPDA(patrimonio);
+
+    } catch(e) {
+      showToast(e.message, "error");
+    }
+  }
+
+  // ==========================================
+  // IMPRESSÃO NATIVA HTML (Etiqueta Fantasma)
+  // ==========================================
+  function iniciarImpressaoPDA(patrimonio) {
+    pdaParaImprimirGlobal = patrimonio;
+    document.getElementById('modal-print-pda-nome').innerText = patrimonio;
+    document.getElementById('modal-print-confirm').classList.replace('hidden', 'flex');
+  }
+
+  function fecharModalPrint() {
+    document.getElementById('modal-print-confirm').classList.replace('flex', 'hidden');
+    pdaParaImprimirGlobal = null;
+  }
+
+  function imprimirEtiquetaConfirmada() {
+    if(!pdaParaImprimirGlobal) return;
+
+    const pda = appState.pdas.find(p => p.patrimonio === pdaParaImprimirGlobal);
+    let textoFinal = "";
+
+    if (typeof ImpressaoService !== 'undefined') {
+      textoFinal = ImpressaoService.gerarTextoEtiqueta(pda);
+      ImpressaoService.imprimir(textoFinal);
+    } else {
+      // Fallback
+      const getNome = (u) => u ? u.nome.split(' ')[0].toUpperCase() : 'VAGO';
+      if (!pda || (!pda.donoTurno1 && !pda.donoTurno2)) {
+        textoFinal = pda && pda.setorAlocado ? `( ${pda.setorAlocado.toUpperCase().substring(0,15)} )` : "( LIVRE )";
+      } else if (!pda.donoTurno2) {
+        textoFinal = `( ${getNome(pda.donoTurno1)} T1 )`;
+      } else if (!pda.donoTurno1) {
+        textoFinal = `( ${getNome(pda.donoTurno2)} T2 )`;
+      } else {
+        textoFinal = `( ${getNome(pda.donoTurno1)} / ${getNome(pda.donoTurno2)} )`;
+      }
+
+      const printArea = document.getElementById('etiqueta-print-area');
+      const printText = document.getElementById('etiqueta-print-texto');
+      if (printArea && printText) {
+        printText.innerText = textoFinal;
+        window.print();
+      }
+    }
+
+    fecharModalPrint();
+  }
+
+  // ==========================================
+  // AÇÕES: ABRIR TICKET / CHAMADO T.I.
+  // ==========================================
+  async function enviarSolicitacaoTI(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btn-solicitar-ti');
+    const tipo = document.getElementById('solicitacao-tipo').value;
+    const qtd = document.getElementById('solicitacao-qtd').value;
+    const prioridade = document.getElementById('solicitacao-prioridade').value;
+    const motivo = document.getElementById('solicitacao-motivo').value;
+
+    try {
+      btn.disabled = true;
+      btn.innerHTML = `<i class="ph ph-spinner animate-spin"></i> A processar na T.I...`;
+
+      const response = await fetch(`${API_BASE_URL}/chamados`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tipo: tipo,
+          prioridade: prioridade,
+          matricula: appState.matriculaLider,
+          pda: null,
+          descricao: `[QTD: ${qtd}] ${motivo}`
+        })
+      });
+
+      if(!response.ok) {
+        const err = await response.json();
+        throw new Error(err.erro || "Falha na API.");
+      }
+
+      showToast(`Ticket registado com sucesso!`, "success");
+      document.getElementById('solicitacao-motivo').value = '';
+      sincronizarDadosGerais();
+    } catch (error) {
+      showToast(error.message, "error");
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = `<i class="ph ph-paper-plane-right text-lg"></i> Enviar Solicitação`;
+    }
+  }
+
+  // ==========================================
+  // AÇÕES: CHAT DO CHAMADO (LÍDER)
+  // ==========================================
+  async function abrirDetalhesChamado(id) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/chamados/${id}`);
+      if(!res.ok) throw new Error("Chamado não encontrado no sistema.");
+
+      appState.chamadoAbertoAtualmente = await res.json();
+      const c = appState.chamadoAbertoAtualmente;
+
+      document.getElementById('detalhe-id').innerText = c.id;
+      document.getElementById('detalhe-pda').innerText = c.pda ? c.pda.patrimonio : '---';
+      document.getElementById('detalhe-data').innerText = new Date(c.dataAbertura).toLocaleString('pt-BR');
+      document.getElementById('detalhe-descricao').innerText = c.descricao;
+      document.getElementById('badge-status-atual').innerHTML = getBadgeStatusChamado(c.status);
+
+      const chatContainer = document.getElementById('chat-messages-container');
+      chatContainer.innerHTML = `<div class="flex flex-col items-center my-4"><span class="bg-slate-200 text-slate-500 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest text-center">Abertura de Ticket</span></div>`;
+
+      const resMsgs = await fetch(`${API_BASE_URL}/chamados/${id}/mensagens`);
+      if(resMsgs.ok) {
+        const mensagens = await resMsgs.json();
+        mensagens.forEach(msg => {
+          const isInterna = msg.interna === true || msg.isInterna === true || msg.interna === 1 || msg.isInterna === 1;
+          if(!isInterna) {
+            const autorNome = msg.autor ? getNomeCurto(msg.autor.nome) : 'Sistema';
+            const isMe = msg.autor && msg.autor.matricula === appState.matriculaLider;
+            adicionarBalaoDeChat(msg.texto, autorNome, msg.dataHora, isMe);
+          }
+        });
+      }
+
+      document.querySelectorAll('.view-panel').forEach(p => { p.classList.add('hidden'); p.classList.remove('block'); });
+      document.getElementById('view-detalhe-chamado').classList.remove('hidden');
+      document.getElementById('view-detalhe-chamado').classList.add('flex');
+    } catch(e) {
+      showToast(e.message, "error");
+    }
+  }
+
+  function voltarParaDashboardChat() {
+    appState.chamadoAbertoAtualmente = null;
+    document.getElementById('view-detalhe-chamado').classList.replace('flex', 'hidden');
+    document.getElementById('view-dashboard').classList.replace('hidden', 'block');
+  }
+
+  async function enviarMensagem(e) {
+    e.preventDefault();
+    const input = document.getElementById('input-mensagem');
+    const texto = input.value.trim();
+    const c = appState.chamadoAbertoAtualmente;
+
+    if(texto !== '' && c) {
+      try {
+        const response = await fetch(`${API_BASE_URL}/chamados/${c.id}/mensagens`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ texto: texto, isInterna: false, autorMatricula: appState.matriculaLider })
+        });
+
+        if(!response.ok) throw new Error("A T.I. rejeitou a sua mensagem.");
+
+        const msgSalva = await response.json();
+
+        adicionarBalaoDeChat(msgSalva.texto, getNomeCurto(sessionStorage.getItem('logged_nome')), msgSalva.dataHora, true);
+        input.value = '';
+      } catch (error) {
+        showToast(error.message, "error");
+      }
+    }
+  }
+
+  function adicionarBalaoDeChat(texto, autor, dataISO, isMe) {
+    const container = document.getElementById('chat-messages-container');
+    const div = document.createElement('div');
+    const horaStr = dataISO ? new Date(dataISO).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}) : new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
+
+    if (autor === 'Sistema') {
+      div.className = "flex flex-col items-center my-4";
+      div.innerHTML = `<span class="bg-slate-200 text-slate-500 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest text-center">${texto} • ${horaStr}</span>`;
+    } else if (isMe) {
+      div.className = "flex flex-col items-end w-full mt-4";
+      div.innerHTML = `<span class="text-[10px] text-slate-400 font-bold mr-1 mb-1">Eu • ${horaStr}</span><div class="bg-slate-800 text-white p-3 rounded-2xl rounded-tr-none text-sm shadow-sm max-w-[85%] border border-slate-900">${texto}</div>`;
+    } else {
+      div.className = "flex flex-col items-start w-full mt-4";
+      div.innerHTML = `<span class="text-[10px] text-slate-400 font-bold ml-1 mb-1">T.I. (${autor}) • ${horaStr}</span><div class="bg-white text-slate-700 p-3 rounded-2xl rounded-tl-none text-sm shadow-sm max-w-[85%] border border-slate-200">${texto}</div>`;
+    }
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+  }
+
+  // ==========================================
+  // HELPERS VISUAIS (BADGES)
+  // ==========================================
+  function getBadgeStatusChamado(status) {
+    if(status === 'RESOLVIDO') return '<span class="px-2 py-1 bg-green-100 text-green-700 rounded text-[10px] uppercase font-bold border border-green-200">Concluído</span>';
+    if(status === 'EM_ANDAMENTO') return '<span class="px-2 py-1 bg-indigo-100 text-indigo-700 rounded text-[10px] uppercase font-bold border border-indigo-200">Na T.I.</span>';
+    return '<span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-[10px] uppercase font-bold border border-yellow-200">Aberto</span>';
+  }
+
+  function getBadgePrioridade(p) {
+    if(p==='CRITICA') return '<span class="text-red-600 font-bold text-xs animate-pulse"><i class="ph ph-warning-circle"></i> CRÍTICA</span>';
+    if(p==='ALTA') return '<span class="text-orange-500 font-bold text-xs"><i class="ph ph-arrow-up"></i> Alta</span>';
+    if(p==='BAIXA') return '<span class="text-slate-500 font-bold text-xs"><i class="ph ph-arrow-down"></i> Baixa</span>';
+    return '<span class="text-blue-600 font-bold text-xs">Média</span>';
+  }
+
+  function getBadgeStatusPda(s) {
+    if(!s) return '';
+    if(s.includes('USO')) return '<span class="px-2 py-0.5 bg-green-100 text-green-700 rounded text-[10px] uppercase font-bold border border-green-200">EM USO</span>';
+    if(s.includes('MANUTENCAO')) return '<span class="px-2 py-0.5 bg-red-100 text-red-700 rounded text-[10px] uppercase font-bold border border-red-200 animate-pulse">MANUTENÇÃO</span>';
+    return '<span class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px] uppercase font-bold border border-blue-200">NO ARMÁRIO</span>';
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Central de Impressão Térmica - ID Logistics</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- IMPORTA O MOTOR DE IMPRESSÃO NATIVO -->
+    <script src="js/impressao.js"></script>
+
+    <style>
+        /* ========================================================
+           CSS DE IMPRESSÃO - FORMATO 7cm x 1cm (70mm x 10mm)
+           ======================================================== */
+
+        #etiqueta-print-area { display: none; }
+
+        @media print {
+            /* Esconde toda a interface gráfica do sistema */
+            body > main, #toast-container { display: none !important; }
+            body {
+                background-color: white !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+
+            /* Define o tamanho físico milimétrico da Etiqueta */
+            @page {
+                size: 70mm 10mm;
+                margin: 0mm !important; /* Tenta forçar o navegador a zerar margens */
+            }
+
+            /* Container da etiqueta - Ocupa exatamente os 70x10mm */
+            #etiqueta-print-area {
+                display: flex !important;
+                width: 70mm;
+                height: 10mm;
+                align-items: center;
+                justify-content: center;
+                margin: 0 !important;
+                padding: 0 !important;
+                box-sizing: border-box;
+                overflow: hidden; /* Impede que "vaze" para uma segunda página */
+            }
+
+            /* Texto ajustado para caber em 1cm de altura */
+            #etiqueta-print-texto {
+                font-family: 'Arial', sans-serif;
+                font-weight: bold;
+                font-size: 12pt; /* Tamanho seguro para 10mm de altura */
+                text-align: center;
+                text-transform: uppercase;
+                color: black;
+                white-space: nowrap; /* Proíbe a quebra de linha */
+                letter-spacing: 0.5px;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 h-screen flex flex-col items-center justify-center font-sans p-4 relative">
+
+<!-- ÁREA FANTASMA DA ETIQUETA (Invisível no ecrã, visível na impressora) -->
+<div id="etiqueta-print-area">
+    <span id="etiqueta-print-texto"></span>
+</div>
+
+<!-- UI NORMAL DO SISTEMA -->
+<div id="toast-container" class="fixed top-10 right-4 z-[9999] flex flex-col gap-2"></div>
+
+<main class="w-full max-w-5xl bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden flex flex-col md:flex-row h-full md:h-[500px]">
+
+    <!-- PAINEL ESQUERDO: Entradas -->
+    <div class="md:w-1/2 p-8 bg-slate-50 border-r border-slate-200 flex flex-col h-full overflow-y-auto relative">
+
+        <button onclick="voltarParaApp()" class="text-slate-400 hover:text-blue-600 font-medium text-sm flex items-center gap-2 mb-6 transition-colors w-fit">
+            <i class="ph ph-arrow-left"></i> Voltar ao Painel
+        </button>
+
+        <h1 class="text-2xl font-bold text-slate-800 mb-1 flex items-center gap-2">
+            <i class="ph ph-printer text-blue-600"></i> Impressão Direta
+        </h1>
+        <p class="text-slate-500 text-sm mb-6">Gera etiquetas térmicas formato Palito (7x1cm).</p>
+
+        <div class="space-y-6 flex-grow">
+            <div>
+                <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">1. Busca na API (Patrimônio ou Matrícula)</label>
+                <div class="relative flex items-center">
+                    <i class="ph ph-barcode absolute left-4 text-slate-400 text-xl pointer-events-none"></i>
+                    <input type="text" id="scanner-input" class="w-full pl-12 pr-12 py-3.5 border-2 border-slate-300 rounded-xl text-center font-mono text-lg tracking-widest focus:ring-2 focus:ring-blue-500 outline-none shadow-inner bg-white transition-colors" placeholder="Bipe aqui...">
+                    <button onclick="acionarBuscaManual()" title="Buscar na API" class="absolute right-2 bg-blue-100 hover:bg-blue-200 text-blue-700 p-2 rounded-lg transition-colors flex items-center justify-center">
+                        <i class="ph ph-magnifying-glass text-lg font-bold"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <div class="h-px bg-slate-300 flex-grow"></div>
+                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Impressão Avulsa</span>
+                <div class="h-px bg-slate-300 flex-grow"></div>
+            </div>
+
+            <div>
+                <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">2. Texto Customizado Livre</label>
+                <textarea id="texto-livre" rows="2" class="w-full border-2 border-slate-300 rounded-xl p-4 text-sm focus:ring-2 focus:ring-blue-500 outline-none shadow-inner bg-white resize-none transition-colors" placeholder="Digite o texto curto para impressão..."></textarea>
+            </div>
+        </div>
+    </div>
+
+    <!-- PAINEL DIREITO: Preview na Tela (Ajustado para formato 7x1) -->
+    <div class="md:w-1/2 p-8 flex flex-col items-center justify-center bg-white relative h-full">
+        <div class="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-bl-full -z-10"></div>
+
+        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-6 border-b-2 border-slate-100 pb-2 w-full text-center">
+            Visualização no Ecrã (Proporção 7:1)
+        </p>
+
+        <!-- A "Caixinha" mais estreita para simular a etiqueta 7x1cm -->
+        <div class="w-full max-w-sm h-14 bg-white border-2 border-dashed border-slate-800 p-2 text-center shadow-xl rounded-sm relative flex items-center justify-center overflow-hidden">
+            <div class="absolute -top-3 left-1/2 transform -translate-x-1/2 w-6 h-6 bg-slate-100 rounded-full border-b-2 border-slate-300"></div>
+            <p id="etiqueta-preview" class="font-sans text-base font-black text-slate-900 whitespace-nowrap uppercase">
+                ( AGUARDANDO... )
+            </p>
+        </div>
+
+        <!-- Aviso de Configuração Única -->
+        <div class="mt-8 bg-blue-50 border border-blue-200 text-blue-800 text-xs p-3 rounded-lg flex items-start gap-2 max-w-xs text-left">
+            <i class="ph ph-info mt-0.5 text-base text-blue-600"></i>
+            <p>Na primeira impressão, lembre-se de mudar a opção <strong>"Margens" para "Nenhuma"</strong> na tela do Windows. Ele vai memorizar para as próximas!</p>
+        </div>
+
+        <button onclick="dispararImpressao()" id="btn-imprimir" class="mt-4 w-full max-w-xs bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl flex justify-center items-center gap-2 shadow-md transition-all active:scale-95">
+            <i class="ph ph-printer text-xl"></i> Imprimir Etiqueta
+        </button>
+    </div>
+</main>
+
+<script>
+    const API_BASE_URL = 'http://localhost:8080/api';
+
+    const inputScanner = document.getElementById('scanner-input');
+    const inputLivre = document.getElementById('texto-livre');
+    const preview = document.getElementById('etiqueta-preview');
+
+    let pdaLidaCache = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        inputScanner.focus();
+    });
+
+    // Foca no scanner caso clique fora
+    document.body.addEventListener('click', (e) => {
+        if(e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') {
+            inputScanner.focus();
+        }
+    });
+
+    function showToast(message, type = 'info') {
+        const container = document.getElementById('toast-container');
+        if(!container) return;
+        const toast = document.createElement('div');
+        let bgClass = type === 'success' ? 'bg-green-600' : (type === 'error' ? 'bg-red-600' : 'bg-amber-500');
+        toast.className = `${bgClass} text-white px-5 py-3.5 rounded-xl shadow-lg flex items-center gap-3 mb-2 transform transition-all duration-300 translate-x-full opacity-0 text-sm font-medium z-50`;
+        toast.innerHTML = `<i class="ph ph-${type === 'success' ? 'check-circle' : 'info'} text-xl"></i> <span>${message}</span>`;
+        container.appendChild(toast);
+        requestAnimationFrame(() => toast.classList.remove('translate-x-full', 'opacity-0'));
+        setTimeout(() => { toast.classList.add('opacity-0', 'translate-x-full'); setTimeout(() => toast.remove(), 300); }, 3000);
+    }
+
+    function acionarBuscaManual() {
+        const termo = inputScanner.value.trim().toUpperCase();
+        if (termo) {
+            inputLivre.value = '';
+            processarLeituraPda(termo);
+        } else {
+            showToast("Digite algo para buscar.", "warning");
+            inputScanner.focus();
+        }
+    }
+
+    inputScanner.addEventListener('keypress', async function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            acionarBuscaManual();
+        }
+    });
+
+    inputLivre.addEventListener('input', function(e) {
+        const val = e.target.value.trim().toUpperCase();
+        if (val) {
+            pdaLidaCache = null;
+            preview.innerText = val;
+            inputScanner.value = '';
+        } else {
+            preview.innerText = '( AGUARDANDO... )';
+        }
+    });
+
+    // ==========================================
+    // BUSCA NA API JAVA
+    // ==========================================
+    async function processarLeituraPda(termoBusca) {
+        preview.innerText = "A PESQUISAR API...";
+        try {
+            const res = await fetch(`${API_BASE_URL}/pdas`);
+            if(!res.ok) throw new Error(`HTTP Error: ${res.status}`);
+            const pdas = await res.json();
+
+            const pda = pdas.find(p =>
+                p.patrimonio.toUpperCase() === termoBusca ||
+                (p.donoTurno1 && p.donoTurno1.matricula.toUpperCase() === termoBusca) ||
+                (p.donoTurno2 && p.donoTurno2.matricula.toUpperCase() === termoBusca)
+            );
+
+            if(!pda) {
+                preview.innerText = "( NÃO ENCONTRADO )";
+                pdaLidaCache = null;
+                showToast("Nenhum equipamento ou vínculo encontrado.", "warning");
+                return;
+            }
+
+            pdaLidaCache = pda;
+
+            let textoFinal = "";
+            if (typeof ImpressaoService !== 'undefined') {
+                textoFinal = ImpressaoService.gerarTextoEtiqueta(pda);
+            } else {
+                const getNome = (u) => u ? u.nome.split(' ')[0].toUpperCase() : 'VAGO';
+                if (!pda.donoTurno1 && !pda.donoTurno2) textoFinal = "( DISPONIVEL )";
+                else if (!pda.donoTurno2) textoFinal = `( ${getNome(pda.donoTurno1)} T1 )`;
+                else if (!pda.donoTurno1) textoFinal = `( ${getNome(pda.donoTurno2)} T2 )`;
+                else textoFinal = `( ${getNome(pda.donoTurno1)} / ${getNome(pda.donoTurno2)} )`;
+            }
+
+            preview.innerText = textoFinal;
+            showToast("Equipamento localizado com sucesso!", "success");
+
+        } catch(e) {
+            console.error("Falha ao comunicar com API:", e);
+            preview.innerText = "( ERRO DE CONEXÃO )";
+            showToast("Erro ao conectar com o Servidor Java.", "error");
+        }
+    }
+
+    // ==========================================
+    // DISPARA A JANELA DE IMPRESSÃO (WINDOWS)
+    // ==========================================
+    function dispararImpressao() {
+        const textoDisplay = preview.innerText;
+
+        if(textoDisplay.includes('AGUARDANDO') || textoDisplay.includes('ERRO') || textoDisplay.includes('NÃO ENCONTRADO')) {
+            preview.parentElement.classList.add('border-red-500', 'bg-red-50');
+            setTimeout(() => preview.parentElement.classList.remove('border-red-500', 'bg-red-50'), 500);
+            showToast("O layout contém erros ou está vazio.", "warning");
+            return;
+        }
+
+        let textoFinal = "";
+        if (pdaLidaCache) {
+            textoFinal = (typeof ImpressaoService !== 'undefined')
+                ? ImpressaoService.gerarTextoEtiqueta(pdaLidaCache)
+                : textoDisplay;
+        } else {
+            textoFinal = textoDisplay.replace(/\n/g, " ").trim();
+        }
+
+        // Ativa o comando de impressão via Service
+        if (typeof ImpressaoService !== 'undefined') {
+            ImpressaoService.imprimir(textoFinal);
+        } else {
+            const printArea = document.getElementById('etiqueta-print-area');
+            const printText = document.getElementById('etiqueta-print-texto');
+            if(printArea && printText) {
+                printText.innerText = textoFinal;
+                window.print();
+            }
+        }
+
+        // Limpeza após abrir a janela do windows
+        inputScanner.value = '';
+        inputLivre.value = '';
+        preview.innerText = '( AGUARDANDO... )';
+        inputScanner.focus();
+    }
+
+    function voltarParaApp() {
+        const role = sessionStorage.getItem('logged_role');
+        if(role === 'ADMIN' || role === 'TI') window.location.href = 'admin/chamados.html';
+        else if (role === 'LIDER') window.location.href = 'lider/dashboard.html';
+        else window.location.href = 'index.html';
+    }
+</script>
+</body>
+</html>
