@@ -1,0 +1,22 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:gerenciamentoit;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        type:
+          preferred_uuid_jdbc_type: CHAR
+  sql:
+    init:
+      mode: never
+
+app:
+  bootstrap:
+    enabled: true
+    admin-matricula: ADMIN-TESTE
+    admin-nome: Administrador de Teste

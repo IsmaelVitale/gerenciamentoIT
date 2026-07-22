@@ -1,0 +1,39 @@
+name: API CI
+
+on:
+  pull_request:
+    paths:
+      - 'API/**'
+      - '.github/workflows/api-ci.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'API/**'
+      - '.github/workflows/api-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: API
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Testes e empacotamento
+        run: |
+          chmod +x mvnw
+          ./mvnw -B verify

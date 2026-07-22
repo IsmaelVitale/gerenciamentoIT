@@ -1,0 +1,64 @@
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: /api
+  shutdown: graceful
+
+spring:
+  application:
+    name: gerenciamento-it-api
+
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:gerenciamento_it}?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=UTF-8&connectionTimeZone=UTC&sslMode=${DB_SSL_MODE:DISABLED}&allowPublicKeyRetrieval=true
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          time_zone: UTC
+        type:
+          preferred_uuid_jdbc_type: CHAR
+
+  sql:
+    init:
+      mode: never
+
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+
+app:
+  security:
+    session-duration: ${SESSION_DURATION:PT8H}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173,http://localhost:63342}
+  bootstrap:
+    enabled: ${BOOTSTRAP_ENABLED:true}
+    admin-matricula: ${BOOTSTRAP_ADMIN_MATRICULA:ADMIN-LOCAL}
+    admin-nome: ${BOOTSTRAP_ADMIN_NOME:Administrador Inicial}
+
+logging:
+  level:
+    org.hibernate.SQL: ${HIBERNATE_SQL_LOG:INFO}
