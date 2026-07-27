@@ -2,7 +2,7 @@
 
 Fundacao da nova API central do GerenciamentoIT.
 
-## Escopo desta entrega
+## Escopo implementado
 
 - Java 21 e Spring Boot 4.1;
 - Spring Web, Security, Data JPA e Hibernate;
@@ -15,11 +15,14 @@ Fundacao da nova API central do GerenciamentoIT.
 - cadastro e liberacao de ativos;
 - numero de serie obrigatorio e unico;
 - patrimonio opcional e unico quando preenchido;
+- abertura e consulta dos proprios chamados;
+- integracao inicial com o bot do WhatsApp;
+- idempotencia por identificador externo de mensagem;
 - historico inicial de movimentacoes e auditoria;
 - Swagger/OpenAPI;
 - bootstrap automatico do primeiro gestor e dos tipos basicos de ativo.
 
-WhatsApp, chamados, Planner, ITSM, conferencia de PDA, emprestimos e divergencias ficam fora desta primeira etapa.
+Planner, ITSM completo, conferencia de PDA, emprestimos, manutencoes e divergencias permanecem para etapas posteriores.
 
 ## Criacao automatica do banco
 
@@ -77,6 +80,7 @@ DB_PASSWORD
 DB_SSL_MODE
 BOOTSTRAP_ADMIN_MATRICULA
 BOOTSTRAP_ADMIN_NOME
+BOOTSTRAP_ENABLED
 CORS_ALLOWED_ORIGINS
 SESSION_DURATION
 ```
@@ -113,6 +117,39 @@ Authorization: Bearer <token>
 ```
 
 A autenticacao somente por matricula e deliberadamente provisoria. O token de sessao impede que os comandos de negocio aceitem uma matricula arbitraria como autor da operacao.
+
+## Chamados
+
+Qualquer papel autenticado recebe as permissoes `CHAMADO_ABRIR` e `CHAMADO_VISUALIZAR_PROPRIO`. A API sempre associa o chamado ao usuario da sessao. O telefone e apenas um dado de contato, e a origem e obtida da sessao; nenhum desses campos define a identidade do solicitante.
+
+Abertura:
+
+```http
+POST /api/v1/chamados
+Authorization: Bearer <token>
+Idempotency-Key: <identificador-opcional>
+Content-Type: application/json
+```
+
+```json
+{
+  "descricao": "Leitor de codigo de barras travado",
+  "telefoneContato": "5511999999999",
+  "identificadorExterno": "mensagem-whatsapp-001"
+}
+```
+
+Quando `Idempotency-Key` ou `identificadorExterno` ja foi processado para a mesma origem e o mesmo usuario, a API devolve o chamado existente com HTTP `200`. Uma nova abertura responde HTTP `201`.
+
+Consultas do solicitante:
+
+```http
+GET /api/v1/chamados/meus
+GET /api/v1/chamados/meus/{id}
+GET /api/v1/chamados/meus/protocolo/{protocolo}
+```
+
+O primeiro status e `ABERTO`. Triagem, atribuicao, SLA, mensagens, resolucao e fechamento pertencem ao proximo incremento de ITSM.
 
 ## Cadastro de ativo
 
