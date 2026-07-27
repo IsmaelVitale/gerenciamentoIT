@@ -7,5 +7,6 @@ public enum OrigemAplicacao {
     GESTAO_ATIVOS,
     ITSM,
     PLANNER,
+    WHATSAPP,
     API
 }
