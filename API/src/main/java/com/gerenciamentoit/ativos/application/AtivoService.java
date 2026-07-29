@@ -13,6 +13,8 @@ import com.gerenciamentoit.ativos.repository.AtivoRepository;
 import com.gerenciamentoit.ativos.repository.MovimentacaoAtivoRepository;
 import com.gerenciamentoit.ativos.repository.TipoAtivoRepository;
 import com.gerenciamentoit.auditoria.application.AuditoriaService;
+import com.gerenciamentoit.organizacao.domain.Setor;
+import com.gerenciamentoit.organizacao.repository.SetorRepository;
 import com.gerenciamentoit.shared.error.ConflictException;
 import com.gerenciamentoit.shared.error.NotFoundException;
 import com.gerenciamentoit.shared.error.ValidationException;
@@ -34,6 +36,7 @@ public class AtivoService {
 
     private final AtivoRepository ativoRepository;
     private final TipoAtivoRepository tipoRepository;
+    private final SetorRepository setorRepository;
     private final MovimentacaoAtivoRepository movimentacaoRepository;
     private final UsuarioRepository usuarioRepository;
     private final ContextoAutenticacao contexto;
@@ -42,6 +45,7 @@ public class AtivoService {
     public AtivoService(
             AtivoRepository ativoRepository,
             TipoAtivoRepository tipoRepository,
+            SetorRepository setorRepository,
             MovimentacaoAtivoRepository movimentacaoRepository,
             UsuarioRepository usuarioRepository,
             ContextoAutenticacao contexto,
@@ -49,6 +53,7 @@ public class AtivoService {
     ) {
         this.ativoRepository = ativoRepository;
         this.tipoRepository = tipoRepository;
+        this.setorRepository = setorRepository;
         this.movimentacaoRepository = movimentacaoRepository;
         this.usuarioRepository = usuarioRepository;
         this.contexto = contexto;
@@ -122,6 +127,49 @@ public class AtivoService {
         );
         auditoria.registrar(
                 "IDENTIFICACAO_ATIVO_CORRIGIDA",
+                "ATIVO",
+                ativo.getId(),
+                anterior,
+                snapshot(ativo),
+                motivo
+        );
+        ativoRepository.flush();
+        return AtivoDetalhe.from(ativo);
+    }
+
+    @Transactional
+    public AtivoDetalhe alocarAoSetor(UUID id, AlocarSetor comando) {
+        Ativo ativo = buscarEntidade(id);
+        if (!ativo.getTipo().isControlaPool()) {
+            throw new ConflictException(
+                    "ATIVO_NAO_CONTROLA_POOL",
+                    "Somente ativos que controlam pool podem ser alocados a um setor."
+            );
+        }
+        if (ativo.getSituacaoPatrimonial() != SituacaoPatrimonial.ATIVO) {
+            throw new ConflictException(
+                    "ATIVO_NAO_LIBERADO",
+                    "O ativo precisa estar liberado antes da alocacao ao setor."
+            );
+        }
+
+        Setor setor = setorRepository.findById(comando.setorId())
+                .filter(Setor::isAtivo)
+                .orElseThrow(() -> new NotFoundException(
+                        "SETOR_NAO_ENCONTRADO",
+                        "Setor nao encontrado ou inativo."
+                ));
+        String motivo = Normalizer.textoObrigatorio(comando.motivo());
+
+        String anterior = snapshot(ativo);
+        ativo.alocarAoSetor(setor);
+        registrarMovimentacao(
+                ativo,
+                TipoMovimentacaoAtivo.ALOCACAO_SETOR,
+                "Ativo alocado ao pool do setor " + setor.getCodigo() + ". Motivo: " + motivo
+        );
+        auditoria.registrar(
+                "ATIVO_ALOCADO_SETOR",
                 "ATIVO",
                 ativo.getId(),
                 anterior,
@@ -214,7 +262,10 @@ public class AtivoService {
                 + ";tipo=" + ativo.getTipo().getCodigo()
                 + ";situacao=" + ativo.getSituacaoPatrimonial()
                 + ";disponibilidade=" + ativo.getDisponibilidade()
-                + ";localizacao=" + ativo.getLocalizacaoAtual();
+                + ";localizacao=" + ativo.getLocalizacaoAtual()
+                + ";setor=" + (ativo.getSetorPermanente() == null
+                ? null
+                : ativo.getSetorPermanente().getCodigo());
     }
 
     public record CadastrarAtivo(
@@ -240,6 +291,21 @@ public class AtivoService {
     ) {
     }
 
+    public record AlocarSetor(
+            UUID setorId,
+            String motivo
+    ) {
+        public AlocarSetor {
+            if (setorId == null) {
+                throw new ValidationException(
+                        "SETOR_OBRIGATORIO",
+                        "O setor e obrigatorio.",
+                        "setorId"
+                );
+            }
+        }
+    }
+
     public record FiltroAtivo(
             String numeroSerie,
             String patrimonio,
@@ -260,6 +326,9 @@ public class AtivoService {
             SituacaoPatrimonial situacaoPatrimonial,
             DisponibilidadeAtivo disponibilidade,
             LocalizacaoAtivo localizacaoAtual,
+            UUID setorPermanenteId,
+            String setorPermanenteCodigo,
+            String setorPermanenteNome,
             Instant criadoEm,
             long versao
     ) {
@@ -275,6 +344,9 @@ public class AtivoService {
                     ativo.getSituacaoPatrimonial(),
                     ativo.getDisponibilidade(),
                     ativo.getLocalizacaoAtual(),
+                    ativo.getSetorPermanente() == null ? null : ativo.getSetorPermanente().getId(),
+                    ativo.getSetorPermanente() == null ? null : ativo.getSetorPermanente().getCodigo(),
+                    ativo.getSetorPermanente() == null ? null : ativo.getSetorPermanente().getNome(),
                     ativo.getCriadoEm(),
                     ativo.getVersao()
             );
@@ -295,6 +367,9 @@ public class AtivoService {
             SituacaoPatrimonial situacaoPatrimonial,
             DisponibilidadeAtivo disponibilidade,
             LocalizacaoAtivo localizacaoAtual,
+            UUID setorPermanenteId,
+            String setorPermanenteCodigo,
+            String setorPermanenteNome,
             Instant criadoEm,
             Instant atualizadoEm,
             long versao
@@ -314,6 +389,9 @@ public class AtivoService {
                     ativo.getSituacaoPatrimonial(),
                     ativo.getDisponibilidade(),
                     ativo.getLocalizacaoAtual(),
+                    ativo.getSetorPermanente() == null ? null : ativo.getSetorPermanente().getId(),
+                    ativo.getSetorPermanente() == null ? null : ativo.getSetorPermanente().getCodigo(),
+                    ativo.getSetorPermanente() == null ? null : ativo.getSetorPermanente().getNome(),
                     ativo.getCriadoEm(),
                     ativo.getAtualizadoEm(),
                     ativo.getVersao()

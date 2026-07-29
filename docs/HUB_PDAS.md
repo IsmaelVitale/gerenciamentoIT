@@ -109,7 +109,9 @@ Requisitos de experiência:
 - indicar claramente quando estiver offline;
 - permitir simulação de leitura durante o desenvolvimento.
 
-A escolha do framework de frontend ainda não está definida por esta documentação. A tecnologia escolhida deverá suportar PWA, armazenamento local seguro e sincronização em segundo plano.
+O frontend utiliza React, TypeScript e Vite, com fundação PWA. O armazenamento
+local seguro e a sincronização em segundo plano serão introduzidos na etapa
+offline.
 
 ## 6. Contexto operacional
 
@@ -512,6 +514,12 @@ POST /api/v1/sessoes
 GET  /api/v1/me
 DELETE /api/v1/sessoes/atual
 GET  /api/v1/me/contextos-operacionais
+POST /api/v1/conferencias
+GET  /api/v1/conferencias/{id}
+GET  /api/v1/conferencias/{id}/itens
+GET  /api/v1/conferencias/{id}/leituras
+POST /api/v1/conferencias/{id}/leituras
+POST /api/v1/conferencias/{id}/conclusoes
 ```
 
 Previstos para as próximas etapas:
@@ -520,12 +528,6 @@ Previstos para as próximas etapas:
 GET  /api/v1/ativos
 GET  /api/v1/ativos/{id}
 GET  /api/v1/ativos/identificadores/{codigo}
-
-POST /api/v1/conferencias
-GET  /api/v1/conferencias/{id}
-GET  /api/v1/conferencias/{id}/itens
-POST /api/v1/conferencias/{id}/leituras
-POST /api/v1/conferencias/{id}/conclusoes
 
 POST /api/v1/emprestimos
 POST /api/v1/emprestimos/{id}/recebimentos
@@ -584,9 +586,12 @@ O estado atual entrega:
 - sessão mantida em `sessionStorage` e revogada no logout;
 - estados de carregamento, erro, sessão expirada e ausência de contexto;
 - indicador online e offline;
-- navegação sem persistir operações de ativo.
-
-A conferência por bipagem e seu resumo continuam na Etapa 1.
+- abertura ou retomada de conferência online;
+- fotografia do pool esperado;
+- bipagem por número de série ou patrimônio;
+- classificação de duplicadas, extras, não cadastradas e PDAs de outro setor;
+- revisão de confirmadas e ausentes;
+- conclusão e resultado validados pela API.
 
 ## 18. Etapas de entrega
 
@@ -604,6 +609,9 @@ A conferência por bipagem e seu resumo continuam na Etapa 1.
 - abrir conferência;
 - registrar leituras;
 - enviar e mostrar o resultado da API.
+
+Status: concluída para operação online. A persistência local das leituras e a
+sincronização durante perda de conexão pertencem à Etapa 3.
 
 ### Etapa 2 — Ações rápidas
 

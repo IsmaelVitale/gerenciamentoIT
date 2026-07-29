@@ -20,6 +20,7 @@ public enum Papel {
             USUARIO_ATRIBUIR_ACESSO,
             TIPO_ATIVO_VISUALIZAR,
             ATIVO_VISUALIZAR,
+            CONFERENCIA_EXECUTAR,
             CHAMADO_ABRIR,
             CHAMADO_VISUALIZAR_PROPRIO
     )),
@@ -34,6 +35,7 @@ public enum Papel {
             USUARIO_ATRIBUIR_ACESSO,
             TIPO_ATIVO_VISUALIZAR,
             ATIVO_VISUALIZAR,
+            CONFERENCIA_EXECUTAR,
             CHAMADO_ABRIR,
             CHAMADO_VISUALIZAR_PROPRIO
     )),
@@ -47,7 +49,9 @@ public enum Papel {
             ATIVO_CADASTRAR,
             ATIVO_VISUALIZAR,
             ATIVO_LIBERAR,
+            ATIVO_ALOCAR_SETOR,
             ATIVO_CORRIGIR_IDENTIFICACAO,
+            CONFERENCIA_EXECUTAR,
             CHAMADO_ABRIR,
             CHAMADO_VISUALIZAR_PROPRIO
     )),

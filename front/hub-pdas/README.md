@@ -2,7 +2,7 @@
 
 SPA/PWA desktop-first do GerenciamentoIT para conferência e operação dos pools de PDAs.
 
-O Hub utiliza a API local real para identificar o usuário e carregar os contextos operacionais autorizados. Conferência, ações rápidas e sincronização offline permanecem para as próximas etapas do MVP.
+O Hub utiliza a API local real para identificar o usuário, carregar os contextos operacionais autorizados e executar a conferência online de abertura. Ações rápidas e sincronização offline permanecem para as próximas etapas do MVP.
 
 ## Tecnologias
 
@@ -65,14 +65,14 @@ $session = Invoke-RestMethod `
 
 $headers = @{ Authorization = "Bearer $($session.token)" }
 
-Invoke-RestMethod `
+$setor = Invoke-RestMethod `
   -Method Post `
   -Uri "http://localhost:8080/api/v1/setores" `
   -Headers $headers `
   -ContentType "application/json" `
   -Body '{"codigo":"RECEBIMENTO","nome":"Recebimento","cotaPdas":12}'
 
-Invoke-RestMethod `
+$turno = Invoke-RestMethod `
   -Method Post `
   -Uri "http://localhost:8080/api/v1/turnos" `
   -Headers $headers `
@@ -81,6 +81,58 @@ Invoke-RestMethod `
 ```
 
 Depois, informe `ADMIN-LOCAL` na tela de identificação. Como esse usuário possui escopo global, a API disponibilizará as combinações ativas de setor e turno.
+
+## Primeiro pool de PDAs
+
+A conferência utiliza as PDAs liberadas e alocadas ao setor como fotografia do
+pool esperado. Em um banco novo, o tipo `PDA` já é criado pelo bootstrap.
+
+Com a sessão, o cabeçalho e o setor do exemplo anterior:
+
+```powershell
+$tipoPda = (Invoke-RestMethod `
+  -Method Get `
+  -Uri "http://localhost:8080/api/v1/tipos-ativo" `
+  -Headers $headers) | Where-Object codigo -eq "PDA"
+
+1..2 | ForEach-Object {
+  $codigo = "PDA-TESTE-{0:D3}" -f $_
+  $ativoBody = @{
+    tipoAtivoId = $tipoPda.id
+    numeroSerie = "SN-$codigo"
+    patrimonio = $codigo
+    fabricante = "Honeywell"
+    modelo = "CT40"
+  } | ConvertTo-Json
+
+  $ativo = Invoke-RestMethod `
+    -Method Post `
+    -Uri "http://localhost:8080/api/v1/ativos" `
+    -Headers $headers `
+    -ContentType "application/json" `
+    -Body $ativoBody
+
+  Invoke-RestMethod `
+    -Method Post `
+    -Uri "http://localhost:8080/api/v1/ativos/$($ativo.id)/liberacoes" `
+    -Headers $headers
+
+  $alocacaoBody = @{
+    setorId = $setor.id
+    motivo = "Preparação do pool local"
+  } | ConvertTo-Json
+
+  Invoke-RestMethod `
+    -Method Post `
+    -Uri "http://localhost:8080/api/v1/ativos/$($ativo.id)/alocacoes-setor" `
+    -Headers $headers `
+    -ContentType "application/json" `
+    -Body $alocacaoBody
+}
+```
+
+Depois, entre no Hub, selecione o contexto e escolha **Iniciar conferência**.
+As leituras aceitam número de série ou patrimônio.
 
 ## Fluxo real disponível
 
@@ -91,6 +143,10 @@ Depois, informe `ADMIN-LOCAL` na tela de identificação. Como esse usuário pos
 5. Um único contexto é selecionado automaticamente; múltiplos contextos abrem a tela de seleção.
 6. O logout revoga a sessão na API e limpa o estado local.
 7. Erros de matrícula, sessão expirada, API indisponível e ausência de contexto são mostrados na interface.
+8. A conferência cria uma fotografia do pool esperado, registra leituras e
+   classifica duplicadas, extras, não cadastradas e PDAs de outro setor.
+9. A revisão mostra as ausentes antes da confirmação definitiva.
+10. A conclusão e o resultado exibido vêm da API.
 
 ## Configuração
 
@@ -138,13 +194,16 @@ Incluído:
 - seleção de contexto;
 - tratamento de carregamento, vazio e erro;
 - indicador online/offline;
+- conferência online de abertura;
+- leitura por número de série ou patrimônio;
+- revisão de confirmadas, ausentes e divergências;
+- conclusão auditada pela API;
 - layout principal para PCs;
 - adaptação para tablet em modo paisagem;
 - configuração da API local.
 
 Fora desta entrega:
 
-- conferência por bipagem;
 - consulta e ações rápidas sobre ativos;
 - persistência em IndexedDB;
 - fila offline;

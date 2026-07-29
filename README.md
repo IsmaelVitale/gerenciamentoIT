@@ -56,13 +56,16 @@ A primeira etapa implementada inclui:
 - contextos operacionais universais por usuario;
 - tipos de ativo;
 - cadastro e liberacao inicial de ativos;
+- alocacao de PDAs ao pool permanente de um setor;
 - numero de serie obrigatorio;
 - patrimonio opcional;
+- conferencia online de abertura com fotografia do pool;
+- classificacao de leituras e conclusao auditada;
 - auditoria;
 - historico inicial de movimentacoes;
 - criacao automatica do banco e do schema.
 
-O Hub de PDAs possui frontend React/TypeScript/Vite e ja consome os contratos reais de sessao e contexto operacional. Os demais frontends antigos permanecem apenas como referencia visual.
+O Hub de PDAs possui frontend React/TypeScript/Vite e ja consome os contratos reais de sessao, contexto operacional e conferencia online. Os demais frontends antigos permanecem apenas como referencia visual.
 
 ## 3. Principio central de autorizacao
 
