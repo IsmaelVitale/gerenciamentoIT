@@ -4,11 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#071a34" />
-    <meta name="description" content="Portal temporário dos frontends do GerenciamentoIT" />
-    <title>Portal | GerenciamentoIT</title>
+    <meta
+      name="description"
+      content="Portal HTML local para testar os módulos do GerenciamentoIT"
+    />
+    <link rel="stylesheet" href="assets/styles.css" />
+    <title>Central de testes | GerenciamentoIT</title>
   </head>
   <body data-page="home">
     <div id="app"></div>
-    <script type="module" src="/src/main.ts"></script>
+    <noscript>Este portal precisa do JavaScript habilitado no navegador.</noscript>
+    <script src="assets/api.js"></script>
+    <script src="assets/portal.js"></script>
   </body>
 </html>
