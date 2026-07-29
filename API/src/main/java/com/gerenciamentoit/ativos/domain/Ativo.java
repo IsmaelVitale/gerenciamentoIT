@@ -1,5 +1,6 @@
 package com.gerenciamentoit.ativos.domain;
 
+import com.gerenciamentoit.organizacao.domain.Setor;
 import com.gerenciamentoit.shared.domain.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -49,6 +50,10 @@ public class Ativo extends BaseEntity {
     @Column(name = "localizacao_atual", nullable = false, length = 40)
     private LocalizacaoAtivo localizacaoAtual;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "setor_permanente_id")
+    private Setor setorPermanente;
+
     protected Ativo() {
     }
 
@@ -80,6 +85,11 @@ public class Ativo extends BaseEntity {
     public void corrigirIdentificacao(String numeroSerie, String patrimonio) {
         this.numeroSerie = numeroSerie;
         this.patrimonio = patrimonio;
+    }
+
+    public void alocarAoSetor(Setor setor) {
+        this.setorPermanente = setor;
+        this.localizacaoAtual = LocalizacaoAtivo.SETOR;
     }
 
     public TipoAtivo getTipo() {
@@ -116,5 +126,9 @@ public class Ativo extends BaseEntity {
 
     public LocalizacaoAtivo getLocalizacaoAtual() {
         return localizacaoAtual;
+    }
+
+    public Setor getSetorPermanente() {
+        return setorPermanente;
     }
 }

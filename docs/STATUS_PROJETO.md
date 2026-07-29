@@ -25,6 +25,7 @@ O repositorio possui uma fundacao executavel para a API central, inventario inic
 - numero de serie obrigatorio e unico;
 - patrimonio opcional e unico quando preenchido;
 - liberacao e correcao de identificacao;
+- alocacao de PDAs ao pool permanente de um setor;
 - historico inicial de movimentacoes.
 
 ### Chamados e WhatsApp
@@ -48,6 +49,12 @@ O repositorio possui uma fundacao executavel para a API central, inventario inic
 - endpoint universal `GET /api/v1/me/contextos-operacionais`;
 - selecao de setor e turno autorizados;
 - estados de carregamento, erro, API indisponivel e ausencia de contexto;
+- conferencia online de abertura;
+- fotografia do pool esperado;
+- bipagem por numero de serie ou patrimonio;
+- classificacao de duplicadas, extras, nao cadastradas e PDAs de outro setor;
+- revisao de confirmadas e ausentes;
+- conclusao auditada e resultado real da API;
 - modo simulado removido do Hub.
 
 ## Decisoes preservadas
@@ -64,9 +71,8 @@ O repositorio possui uma fundacao executavel para a API central, inventario inic
 
 ## Proximos incrementos recomendados
 
-1. **Conferencia online de PDAs:** abrir conferencia, carregar o pool esperado, registrar leituras e concluir com validacao da API.
-2. **Acoes rapidas de PDAs:** consulta, emprestimo, recebimento, devolucao, indisponibilidade e manutencao.
-3. **Operacao offline do Hub:** IndexedDB, fila idempotente, sincronizacao e conflitos.
+1. **Acoes rapidas de PDAs:** consulta, emprestimo, recebimento, devolucao, indisponibilidade e manutencao.
+2. **Operacao offline do Hub:** IndexedDB, fila idempotente, sincronizacao e conflitos.
 4. **ITSM basico:** triagem, categoria, prioridade, atribuicao, mensagens publicas, resolucao e fechamento.
 5. **Vinculacao segura do WhatsApp:** substituir matricula isolada por OTP, senha, SSO, cracha ou outro fator e persistir a associacao autorizada entre usuario e telefone.
 6. **Portal de Chamados:** adaptar a interface do solicitante aos novos endpoints reais.
@@ -80,9 +86,11 @@ O repositorio possui uma fundacao executavel para a API central, inventario inic
 - o estado conversacional pendente do bot fica somente em memoria;
 - `ddl-auto=update` nao substitui migracoes controladas;
 - os frontends antigos ainda sao referencia visual e nao representam integralmente os contratos atuais;
-- conferencia, acoes rapidas e fila offline do Hub ainda nao foram implementadas;
+- acoes rapidas e fila offline do Hub ainda nao foram implementadas;
 - monitoramento, rate limiting, politicas de retencao e observabilidade do bot ainda precisam ser definidos.
 
 ## Orientacao de trabalho
 
-A frente ativa e o **Hub de PDAs**. O proximo incremento recomendado e a conferencia online, usando os contratos universais da API e mantendo o frontend responsavel apenas pelo fluxo e pela apresentacao.
+A frente ativa e o **Hub de PDAs**. Depois da conferencia online, o proximo
+incremento recomendado sao as acoes rapidas, mantendo os contratos universais
+da API e o frontend responsavel apenas pelo fluxo e pela apresentacao.

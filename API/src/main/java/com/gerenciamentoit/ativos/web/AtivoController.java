@@ -91,6 +91,18 @@ public class AtivoController {
         return service.liberar(id);
     }
 
+    @PostMapping("/{id}/alocacoes-setor")
+    @PreAuthorize("hasAuthority('ATIVO_ALOCAR_SETOR')")
+    public AtivoService.AtivoDetalhe alocarAoSetor(
+            @PathVariable UUID id,
+            @Valid @RequestBody AlocarSetorRequest request
+    ) {
+        return service.alocarAoSetor(
+                id,
+                new AtivoService.AlocarSetor(request.setorId(), request.motivo())
+        );
+    }
+
     @PostMapping("/{id}/correcoes-identificacao")
     @PreAuthorize("hasAuthority('ATIVO_CORRIGIR_IDENTIFICACAO')")
     public AtivoService.AtivoDetalhe corrigirIdentificacao(
@@ -119,6 +131,12 @@ public class AtivoController {
             @NotBlank @Size(max = 120) String numeroSerie,
             @Size(max = 80) String patrimonio,
             boolean removerPatrimonio,
+            @NotBlank @Size(max = 500) String motivo
+    ) {
+    }
+
+    public record AlocarSetorRequest(
+            @NotNull UUID setorId,
             @NotBlank @Size(max = 500) String motivo
     ) {
     }

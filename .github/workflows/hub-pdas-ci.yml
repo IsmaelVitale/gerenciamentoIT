@@ -1,0 +1,47 @@
+name: Hub PDAs CI
+
+on:
+  pull_request:
+    paths:
+      - "front/hub-pdas/**"
+      - ".github/workflows/hub-pdas-ci.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "front/hub-pdas/**"
+      - ".github/workflows/hub-pdas-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: front/hub-pdas
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: front/hub-pdas/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Production audit
+        run: npm audit --omit=dev

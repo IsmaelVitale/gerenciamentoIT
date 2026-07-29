@@ -14,8 +14,11 @@ Fundacao da nova API central do GerenciamentoIT.
 - contextos operacionais autorizados por usuario;
 - tipos de ativo;
 - cadastro e liberacao de ativos;
+- alocacao de ativos controlados ao pool permanente de um setor;
 - numero de serie obrigatorio e unico;
 - patrimonio opcional e unico quando preenchido;
+- conferencia online de abertura e encerramento;
+- classificacao de leituras confirmadas, duplicadas, extras, desconhecidas e de outro setor;
 - abertura e consulta dos proprios chamados;
 - integracao inicial com o bot do WhatsApp;
 - idempotencia por identificador externo de mensagem;
@@ -23,7 +26,7 @@ Fundacao da nova API central do GerenciamentoIT.
 - Swagger/OpenAPI;
 - bootstrap automatico do primeiro gestor e dos tipos basicos de ativo.
 
-Planner, ITSM completo, conferencia de PDA, emprestimos, manutencoes e divergencias permanecem para etapas posteriores.
+Planner, ITSM completo, emprestimos, manutencoes, sincronizacao offline e regularizacao de divergencias permanecem para etapas posteriores.
 
 ## Criacao automatica do banco
 
@@ -228,6 +231,22 @@ Liberacao:
 POST /api/v1/ativos/{id}/liberacoes
 ```
 
+Alocacao ao pool permanente de um setor:
+
+```http
+POST /api/v1/ativos/{id}/alocacoes-setor
+```
+
+```json
+{
+  "setorId": "UUID-DO-SETOR",
+  "motivo": "Preparacao do pool de recebimento"
+}
+```
+
+Somente ativos liberados cujo tipo controla pool podem ser alocados. A
+operacao altera a localizacao para `SETOR` e registra movimentacao e auditoria.
+
 Correcao ou inclusao de patrimonio:
 
 ```http
@@ -242,6 +261,36 @@ POST /api/v1/ativos/{id}/correcoes-identificacao
   "motivo": "Etiqueta patrimonial aplicada pela T.I."
 }
 ```
+
+## Conferencias
+
+A abertura cria uma fotografia das PDAs liberadas e alocadas ao setor:
+
+```http
+POST /api/v1/conferencias
+```
+
+```json
+{
+  "setorId": "UUID-DO-SETOR",
+  "turnoId": "UUID-DO-TURNO",
+  "tipo": "ABERTURA"
+}
+```
+
+Contratos disponíveis:
+
+```http
+GET  /api/v1/conferencias/{id}
+GET  /api/v1/conferencias/{id}/itens
+GET  /api/v1/conferencias/{id}/leituras
+POST /api/v1/conferencias/{id}/leituras
+POST /api/v1/conferencias/{id}/conclusoes
+```
+
+Uma leitura aceita numero de serie ou patrimonio. Leituras duplicadas sao
+registradas para auditoria, mas nao aumentam a quantidade confirmada. Na
+conclusao, itens ainda pendentes passam a `AUSENTE`.
 
 ## Testes
 

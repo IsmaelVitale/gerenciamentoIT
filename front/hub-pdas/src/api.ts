@@ -35,6 +35,78 @@ export interface OperationalContext {
   }
 }
 
+export type ConferenceStatus = 'EM_ANDAMENTO' | 'CONCLUIDA'
+export type ConferenceType = 'ABERTURA' | 'ENCERRAMENTO'
+export type ConferenceItemStatus = 'PENDENTE' | 'CONFIRMADA' | 'AUSENTE'
+export type ConferenceReadingResult =
+  | 'CONFIRMADA'
+  | 'DUPLICADA'
+  | 'EXTRA'
+  | 'NAO_CADASTRADA'
+  | 'OUTRO_SETOR'
+  | 'NAO_CONTROLADA'
+  | 'BAIXADA'
+  | 'IDENTIFICADOR_AMBIGUO'
+
+export interface ConferenceSummary {
+  esperadas: number
+  leituras: number
+  confirmadas: number
+  pendentes: number
+  ausentes: number
+  duplicadas: number
+  extras: number
+  naoCadastradas: number
+  outroSetor: number
+  divergencias: number
+}
+
+export interface Conference {
+  id: string
+  tipo: ConferenceType
+  status: ConferenceStatus
+  setorId: string
+  setorCodigo: string
+  setorNome: string
+  turnoId: string
+  turnoCodigo: string
+  turnoNome: string
+  responsavelId: string
+  responsavelMatricula: string
+  responsavelNome: string
+  iniciadaEm: string
+  concluidaEm: string | null
+  resumo: ConferenceSummary
+}
+
+export interface ConferenceItem {
+  id: string
+  ativoId: string
+  numeroSerie: string
+  patrimonio: string | null
+  tipoCodigo: string
+  modelo: string | null
+  disponibilidade: string
+  status: ConferenceItemStatus
+  confirmadaEm: string | null
+}
+
+export interface ConferenceReading {
+  id: string
+  codigo: string
+  resultado: ConferenceReadingResult
+  ativoId: string | null
+  numeroSerie: string | null
+  patrimonio: string | null
+  setorCodigo: string | null
+  lidaEm: string
+}
+
+export interface ConferenceReadingResponse {
+  leitura: ConferenceReading
+  resumo: ConferenceSummary
+}
+
 interface ApiErrorBody {
   codigo?: string
   mensagem?: string
@@ -135,6 +207,74 @@ export function revokeCurrentSession(token: string): Promise<void> {
     '/v1/sessoes/atual',
     {
       method: 'DELETE',
+    },
+    token,
+  )
+}
+
+export function openConference(
+  token: string,
+  context: OperationalContext,
+): Promise<Conference> {
+  return request<Conference>(
+    '/v1/conferencias',
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        setorId: context.setor.id,
+        turnoId: context.turno.id,
+        tipo: 'ABERTURA',
+      }),
+    },
+    token,
+  )
+}
+
+export function getConferenceItems(
+  token: string,
+  conferenceId: string,
+): Promise<ConferenceItem[]> {
+  return request<ConferenceItem[]>(
+    `/v1/conferencias/${conferenceId}/itens`,
+    {},
+    token,
+  )
+}
+
+export function getConferenceReadings(
+  token: string,
+  conferenceId: string,
+): Promise<ConferenceReading[]> {
+  return request<ConferenceReading[]>(
+    `/v1/conferencias/${conferenceId}/leituras`,
+    {},
+    token,
+  )
+}
+
+export function addConferenceReading(
+  token: string,
+  conferenceId: string,
+  code: string,
+): Promise<ConferenceReadingResponse> {
+  return request<ConferenceReadingResponse>(
+    `/v1/conferencias/${conferenceId}/leituras`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ codigo: code }),
+    },
+    token,
+  )
+}
+
+export function completeConference(
+  token: string,
+  conferenceId: string,
+): Promise<Conference> {
+  return request<Conference>(
+    `/v1/conferencias/${conferenceId}/conclusoes`,
+    {
+      method: 'POST',
     },
     token,
   )
