@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#071a34" />
+    <title>Hub de PDAs | GerenciamentoIT</title>
+    <link rel="stylesheet" href="../_shared/base.css" />
+    <link rel="stylesheet" href="app.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="app-sidebar">
+        <div class="app-brand"><span class="brand-icon">PDA</span><span><strong>Hub de PDAs</strong><small>GerenciamentoIT</small></span></div>
+        <nav class="app-nav">
+          <button class="active" data-view-target="overview">Visão do turno</button>
+          <button data-view-target="conference">Conferência</button>
+          <a href="../index.html">Outras aplicações</a>
+        </nav>
+        <div class="app-sidebar-footer"><a href="../../Desenvolvimento_Portal/index.html">Abrir portal técnico</a></div>
+      </aside>
+      <main class="app-main">
+        <header class="app-topbar">
+          <div class="page-context"><strong>Operação de coletores</strong><small id="api-state">API local</small></div>
+          <div class="user-cluster"><div class="current-user" id="current-user"></div><button class="icon-button" id="logout-button" title="Sair">↪</button></div>
+        </header>
+        <div class="app-content">
+          <section class="view active" data-view="overview">
+            <header class="page-head">
+              <div><span class="kicker">INÍCIO DO TURNO</span><h1>Seus pools de PDAs</h1><p>Escolha o setor e inicie a conferência dos equipamentos disponíveis.</p></div>
+              <button class="secondary-button" id="refresh-contexts">Atualizar setores</button>
+            </header>
+            <div class="metric-grid">
+              <article class="metric-card"><span>Setores vinculados</span><strong id="metric-sectors">—</strong></article>
+              <article class="metric-card"><span>Cota total</span><strong id="metric-quota">—</strong></article>
+              <article class="metric-card"><span>Conferência atual</span><strong id="metric-conference">Nenhuma</strong></article>
+              <article class="metric-card"><span>Sessão</span><strong id="metric-session">Ativa</strong></article>
+            </div>
+            <section class="panel">
+              <div class="panel-head"><div><h2>Setores disponíveis</h2><p>Somente os setores permitidos para seu usuário aparecem aqui.</p></div></div>
+              <div class="context-grid" id="context-list"><div class="empty-state">Entre para carregar seus setores.</div></div>
+            </section>
+          </section>
+
+          <section class="view" data-view="conference">
+            <header class="page-head">
+              <div><span class="kicker">CONFERÊNCIA</span><h1>Conferir equipamentos</h1><p>Registre cada PDA pelo patrimônio ou número de série.</p></div>
+              <span class="conference-status" id="conference-status">Não iniciada</span>
+            </header>
+            <section class="conference-start panel" id="conference-start">
+              <div class="panel-head"><div><h2>Nova conferência</h2><p>Selecione o contexto e o momento do turno.</p></div></div>
+              <form class="form-grid" id="conference-form">
+                <label class="field"><span>Setor</span><select name="setorId" id="sector-select" required><option value="">Selecione</option></select></label>
+                <label class="field"><span>Turno</span><select name="turnoId" id="shift-select" required><option value="">Selecione</option></select></label>
+                <label class="field"><span>Tipo de conferência</span><select name="tipo"><option value="ABERTURA">Abertura do turno</option><option value="ENCERRAMENTO">Encerramento do turno</option></select></label>
+                <div class="form-actions"><button class="primary-button" type="submit">Iniciar conferência</button></div>
+              </form>
+            </section>
+            <section id="conference-workspace" hidden>
+              <div class="scan-layout">
+                <article class="panel scan-panel">
+                  <span class="kicker">LEITURA RÁPIDA</span><h2>Digite ou escaneie o PDA</h2>
+                  <form id="scan-form"><input name="codigo" id="scan-input" autocomplete="off" placeholder="Patrimônio ou número de série" required /><button class="primary-button" type="submit">Registrar</button></form>
+                  <div id="scan-feedback" class="scan-feedback">Aguardando a primeira leitura.</div>
+                </article>
+                <article class="panel">
+                  <div class="panel-head"><div><h2>Resumo</h2><p>Acompanhamento em tempo real.</p></div></div>
+                  <div class="conference-metrics">
+                    <div><strong id="count-expected">0</strong><span>Esperados</span></div>
+                    <div><strong id="count-read">0</strong><span>Lidos</span></div>
+                    <div><strong id="count-pending">0</strong><span>Pendentes</span></div>
+                  </div>
+                  <button class="danger-button finish-button" id="finish-conference">Concluir conferência</button>
+                </article>
+              </div>
+              <article class="panel equipment-panel">
+                <div class="panel-head"><div><h2>Equipamentos do pool</h2><p>Situação atual da conferência.</p></div><button class="secondary-button" id="refresh-conference">Atualizar</button></div>
+                <div id="equipment-list" class="equipment-list"><div class="empty-state">Nenhum item carregado.</div></div>
+              </article>
+            </section>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <dialog class="login-dialog" id="login-dialog">
+      <form class="login-card" id="login-form">
+        <span class="kicker">HUB DE PDAS</span><h1>Identifique-se</h1><p>Use sua matrícula para acessar os setores e turnos permitidos.</p>
+        <div class="form-grid">
+          <label class="field"><span>Matrícula</span><input name="matricula" value="ADMIN-LOCAL" required /></label>
+          <label class="field"><span>Endereço da API</span><input name="apiUrl" value="http://localhost:8080/api" required /></label>
+          <div class="form-actions"><button class="primary-button" type="submit">Entrar no Hub</button></div>
+        </div>
+      </form>
+    </dialog>
+    <div class="toast-region" id="toast-region"></div>
+    <script src="../_shared/api.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

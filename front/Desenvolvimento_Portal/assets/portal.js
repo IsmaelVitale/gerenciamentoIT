@@ -168,7 +168,7 @@
       '<p class="nav-label">APLICAÇÕES</p>' +
       navHtml() +
       '</nav>' +
-      '<div class="sidebar-footer"><span class="environment-dot"></span><span><strong>Arquivo local</strong><small>Sem Vite · Sem instalação</small></span></div>' +
+      '<div class="sidebar-footer"><span class="environment-dot"></span><span><strong>Arquivo local</strong><small>Sem Vite · Sem instalação</small><a href="../Aplicacoes/index.html">Abrir aplicações finais</a></span></div>' +
       '</aside>' +
       '<div class="sidebar-scrim" id="sidebar-scrim"></div>' +
       '<main class="main">' +

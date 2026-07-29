@@ -1,0 +1,27 @@
+:root { --accent: #e66d24; --navy: #3b1e0c; }
+.support-hero { display: flex; overflow: hidden; min-height: 290px; align-items: center; justify-content: space-between; gap: 40px; margin-bottom: 16px; padding: 44px; border-radius: 20px; color: #fff; background: linear-gradient(125deg, #351a0a, #833a12); }
+.support-hero h1 { margin: 12px 0 13px; font-size: clamp(40px, 5vw, 65px); line-height: .95; letter-spacing: -.06em; }
+.support-hero p { max-width: 560px; margin: 0 0 25px; color: #dbbda9; font-size: 12px; line-height: 1.65; }
+.support-hero .kicker { color: #ffb47f; }
+.support-hero .primary-button { color: #3b1e0c; background: #fff; box-shadow: none; }
+.hero-mark { display: grid; width: 150px; height: 150px; flex: 0 0 150px; place-items: center; border: 1px solid rgb(255 255 255 / 13%); border-radius: 50%; color: rgb(255 255 255 / 35%); font-size: 46px; font-weight: 850; background: rgb(255 255 255 / 5%); }
+.ticket-list { display: grid; gap: 8px; }
+.ticket-card { display: grid; grid-template-columns: 150px 1fr auto; align-items: center; gap: 17px; padding: 15px; border: 1px solid #e1e7ee; border-radius: 10px; background: #fff; }
+.ticket-card button { border: 0; color: inherit; text-align: left; background: transparent; }
+.ticket-card strong, .ticket-card small { display: block; }
+.ticket-card strong { font-size: 10px; }
+.ticket-card small { margin-top: 4px; color: var(--muted); font-size: 8px; }
+.ticket-card p { overflow: hidden; margin: 0; color: #4e5d72; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.ticket-form-panel { max-width: 900px; }
+.ticket-form-panel textarea { min-height: 180px; }
+.success-ticket { max-width: 650px; margin-top: 15px; padding: 35px; border: 1px solid #cae9dc; border-radius: 16px; text-align: center; background: #f1fbf7; }
+.success-icon { display: grid; width: 48px; height: 48px; margin: 0 auto; place-items: center; border-radius: 50%; color: #fff; font-size: 20px; background: #18a879; }
+.success-ticket h2 { margin: 16px 0 6px; }
+.success-ticket p { margin: 0; color: var(--muted); font-size: 10px; }
+.success-ticket > strong { display: block; margin: 18px 0; color: #087756; font-size: 23px; letter-spacing: .04em; }
+.ticket-toolbar { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-bottom: 17px; }
+.ticket-toolbar input { min-height: 41px; padding: 0 12px; border: 1px solid #d8e1eb; border-radius: 8px; outline: none; }
+.ticket-detail { margin-top: 15px; }
+.ticket-detail h2 { margin: 8px 0; font-size: 22px; }
+.ticket-detail p { color: #536177; font-size: 11px; line-height: 1.7; }
+@media (max-width: 700px) { .hero-mark { display: none; } .support-hero { padding: 30px; } .ticket-card { grid-template-columns: 1fr; } }

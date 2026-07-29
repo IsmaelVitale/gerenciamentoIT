@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#1d1235" />
+    <title>Gestão Operacional | GerenciamentoIT</title>
+    <link rel="stylesheet" href="../_shared/base.css" />
+    <link rel="stylesheet" href="app.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="app-sidebar">
+        <div class="app-brand"><span class="brand-icon">OPS</span><span><strong>Gestão Operacional</strong><small>GerenciamentoIT</small></span></div>
+        <nav class="app-nav">
+          <button class="active" data-view-target="dashboard">Resumo</button>
+          <button data-view-target="people">Pessoas e acessos</button>
+          <button data-view-target="structure">Setores e turnos</button>
+          <a href="../index.html">Outras aplicações</a>
+        </nav>
+        <div class="app-sidebar-footer"><a href="../../Desenvolvimento_Portal/index.html">Abrir portal técnico</a></div>
+      </aside>
+      <main class="app-main">
+        <header class="app-topbar">
+          <div class="page-context"><strong>Estrutura operacional</strong><small>Administração de equipes e escalas</small></div>
+          <div class="user-cluster"><div class="current-user" id="current-user"></div><button class="icon-button" id="logout-button" title="Sair">↪</button></div>
+        </header>
+        <div class="app-content">
+          <section class="view active" data-view="dashboard">
+            <header class="page-head"><div><span class="kicker">VISÃO GERAL</span><h1>Operação organizada</h1><p>Acompanhe a estrutura disponível antes de administrar pessoas e permissões.</p></div><button class="secondary-button" id="refresh-dashboard">Atualizar dados</button></header>
+            <div class="metric-grid">
+              <article class="metric-card"><span>Setores ativos</span><strong id="sector-count">—</strong></article>
+              <article class="metric-card"><span>Turnos ativos</span><strong id="shift-count">—</strong></article>
+              <article class="metric-card"><span>Cota de PDAs</span><strong id="quota-count">—</strong></article>
+              <article class="metric-card"><span>Meu papel</span><strong id="role-name">—</strong></article>
+            </div>
+            <div class="content-grid">
+              <article class="panel"><div class="panel-head"><div><h2>Setores</h2><p>Estrutura operacional cadastrada.</p></div></div><div class="card-list" id="dashboard-sectors"></div></article>
+              <article class="panel"><div class="panel-head"><div><h2>Turnos</h2><p>Janelas de trabalho disponíveis.</p></div></div><div class="card-list" id="dashboard-shifts"></div></article>
+            </div>
+          </section>
+
+          <section class="view" data-view="people">
+            <header class="page-head"><div><span class="kicker">EQUIPE</span><h1>Pessoas e acessos</h1><p>Localize um colaborador, cadastre quando necessário e defina seu escopo.</p></div></header>
+            <div class="content-grid">
+              <article class="panel">
+                <div class="panel-head"><div><h2>Localizar colaborador</h2><p>Busque pela matrícula exata.</p></div></div>
+                <form class="search-row" id="search-user-form"><input name="matricula" placeholder="Matrícula" required /><button class="primary-button" type="submit">Buscar</button></form>
+                <div id="user-result"><div class="empty-state">Nenhum colaborador selecionado.</div></div>
+              </article>
+              <article class="panel">
+                <div class="panel-head"><div><h2>Novo colaborador</h2><p>Cadastre somente se a matrícula ainda não existir.</p></div></div>
+                <form class="form-grid" id="create-user-form">
+                  <label class="field"><span>Matrícula</span><input name="matricula" required /></label>
+                  <label class="field"><span>Nome completo</span><input name="nome" required /></label>
+                  <div class="form-actions"><button class="primary-button" type="submit">Cadastrar colaborador</button></div>
+                </form>
+              </article>
+              <article class="panel panel--wide">
+                <div class="panel-head"><div><h2>Definir acesso</h2><p>O papel determina as funcionalidades; setor e turno determinam o alcance.</p></div></div>
+                <form class="form-grid" id="assign-form">
+                  <label class="field"><span>Colaborador</span><input name="userName" id="selected-user-name" placeholder="Selecione pela busca" disabled /><input type="hidden" name="userId" id="selected-user-id" /></label>
+                  <label class="field"><span>Papel</span><select name="papel" id="role-select"><option value="USUARIO">Usuário</option><option value="LIDER">Líder</option><option value="SUPERVISOR">Supervisor</option><option value="ANALISTA_TI">T.I. — Analista</option><option value="GESTOR_TI">T.I. — Gestor</option></select></label>
+                  <label class="field"><span>Setor</span><select name="setorId" id="assign-sector"><option value="">Sem setor</option></select></label>
+                  <label class="field"><span>Turno</span><select name="turnoId" id="assign-shift"><option value="">Sem turno</option></select></label>
+                  <label class="field"><span>Início da vigência</span><input name="inicioVigencia" type="datetime-local" /></label>
+                  <label class="field"><span>Fim da vigência</span><input name="fimVigencia" type="datetime-local" /></label>
+                  <div class="form-actions"><button class="primary-button" type="submit">Salvar acesso</button><span class="scope-hint" id="scope-hint"></span></div>
+                </form>
+              </article>
+            </div>
+          </section>
+
+          <section class="view" data-view="structure">
+            <header class="page-head"><div><span class="kicker">ESTRUTURA</span><h1>Setores e turnos</h1><p>Cadastre as bases que serão usadas nas atribuições e conferências.</p></div></header>
+            <div class="content-grid">
+              <article class="panel">
+                <div class="panel-head"><div><h2>Novo setor</h2><p>Identifique a área e informe sua cota de PDAs.</p></div></div>
+                <form class="form-grid" id="sector-form">
+                  <label class="field"><span>Código</span><input name="codigo" placeholder="RECEBIMENTO" required /></label>
+                  <label class="field"><span>Nome</span><input name="nome" placeholder="Recebimento" required /></label>
+                  <label class="field"><span>Cota de PDAs</span><input name="cotaPdas" type="number" min="0" value="0" required /></label>
+                  <div class="form-actions"><button class="primary-button" type="submit">Criar setor</button></div>
+                </form>
+              </article>
+              <article class="panel">
+                <div class="panel-head"><div><h2>Novo turno</h2><p>Defina o período de funcionamento.</p></div></div>
+                <form class="form-grid" id="shift-form">
+                  <label class="field"><span>Código</span><input name="codigo" placeholder="MANHA" required /></label>
+                  <label class="field"><span>Nome</span><input name="nome" placeholder="Manhã" required /></label>
+                  <label class="field"><span>Início</span><input name="horaInicio" type="time" /></label>
+                  <label class="field"><span>Fim</span><input name="horaFim" type="time" /></label>
+                  <div class="form-actions"><button class="primary-button" type="submit">Criar turno</button></div>
+                </form>
+              </article>
+              <article class="panel panel--wide">
+                <div class="panel-head"><div><h2>Cadastros atuais</h2><p>Visão consolidada da estrutura.</p></div><button class="secondary-button" id="refresh-structure">Atualizar</button></div>
+                <div class="structure-tables"><div><h3>Setores</h3><div id="sector-table"></div></div><div><h3>Turnos</h3><div id="shift-table"></div></div></div>
+              </article>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <dialog class="login-dialog" id="login-dialog">
+      <form class="login-card" id="login-form"><span class="kicker">GESTÃO OPERACIONAL</span><h1>Acessar operação</h1><p>Entre com uma matrícula autorizada para administrar a estrutura.</p><div class="form-grid"><label class="field"><span>Matrícula</span><input name="matricula" value="ADMIN-LOCAL" required /></label><label class="field"><span>Endereço da API</span><input name="apiUrl" value="http://localhost:8080/api" required /></label><div class="form-actions"><button class="primary-button" type="submit">Entrar</button></div></div></form>
+    </dialog>
+    <div class="toast-region" id="toast-region"></div>
+    <script src="../_shared/api.js"></script><script src="app.js"></script>
+  </body>
+</html>

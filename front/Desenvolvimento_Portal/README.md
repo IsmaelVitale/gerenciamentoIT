@@ -1,6 +1,8 @@
-# Portal HTML local do GerenciamentoIT
+# Desenvolvimento Portal do GerenciamentoIT
 
-Central estática para testar os módulos e os endpoints da API sem Vite, npm ou Postman.
+Central técnica estática para testar módulos e endpoints da API sem Vite, npm ou Postman.
+
+Esta pasta é destinada ao desenvolvimento e à administração técnica. As interfaces que simulam a experiência final dos usuários ficam em `front/Aplicacoes`.
 
 ## Como executar
 

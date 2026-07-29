@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#071a34" />
+    <title>Aplicações | GerenciamentoIT</title>
+    <link rel="stylesheet" href="_shared/base.css" />
+    <style>
+      body { background: #eef3f8; }
+      .launcher { min-height: 100vh; padding: 56px clamp(24px, 6vw, 88px); }
+      .launcher-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 32px; max-width: 1320px; margin: 0 auto 42px; }
+      .launcher-header h1 { margin: 12px 0 14px; font-size: clamp(42px, 6vw, 78px); letter-spacing: -.065em; line-height: .95; }
+      .launcher-header h1 span { color: #6d7d92; font-weight: 450; }
+      .launcher-header p { max-width: 610px; margin: 0; color: #69788b; line-height: 1.7; }
+      .launcher-badge { padding: 12px 16px; border: 1px solid #d6e0eb; border-radius: 12px; color: #526177; font-size: 12px; background: #fff; }
+      .launcher-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; max-width: 1320px; margin: 0 auto; }
+      .launcher-card { position: relative; overflow: hidden; min-height: 270px; padding: 28px; border: 1px solid #dbe3ec; border-radius: 20px; color: #10203a; text-decoration: none; background: #fff; transition: .18s ease; }
+      .launcher-card:hover { transform: translateY(-4px); border-color: var(--accent); box-shadow: 0 18px 40px rgb(28 52 83 / 10%); }
+      .launcher-card::after { position: absolute; inset: auto 0 0; height: 4px; content: ""; background: var(--accent); }
+      .launcher-icon { display: grid; width: 52px; height: 52px; place-items: center; border-radius: 15px; color: var(--accent); font-weight: 850; font-size: 11px; background: color-mix(in srgb, var(--accent) 11%, white); }
+      .launcher-card h2 { margin: 38px 0 10px; font-size: 21px; letter-spacing: -.035em; }
+      .launcher-card p { margin: 0; color: #68778b; font-size: 12px; line-height: 1.65; }
+      .launcher-card small { position: absolute; bottom: 24px; left: 28px; color: #8794a4; font-size: 10px; }
+      @media (max-width: 960px) { .launcher-grid { grid-template-columns: repeat(2, 1fr); } }
+      @media (max-width: 620px) { .launcher { padding: 32px 18px; } .launcher-header { align-items: flex-start; flex-direction: column; } .launcher-grid { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <main class="launcher">
+      <header class="launcher-header">
+        <div>
+          <span class="kicker">GERENCIAMENTOIT</span>
+          <h1>Aplicações<br /><span>do produto.</span></h1>
+          <p>Escolha uma interface para testar a experiência real de cada público. Todas abrem diretamente no navegador.</p>
+        </div>
+        <span class="launcher-badge">HTML · CSS · JavaScript</span>
+      </header>
+      <section class="launcher-grid">
+        <a class="launcher-card" href="hub-pdas/index.html" style="--accent:#2b75ff">
+          <span class="launcher-icon">PDA</span><h2>Hub de PDAs</h2>
+          <p>Conferência rápida dos coletores vinculados ao setor e turno.</p><small>Líder · Supervisor · T.I.</small>
+        </a>
+        <a class="launcher-card" href="gestao-operacional/index.html" style="--accent:#805ad5">
+          <span class="launcher-icon">OPS</span><h2>Gestão Operacional</h2>
+          <p>Administração das pessoas, equipes, setores, turnos e acessos.</p><small>Supervisor · T.I.</small>
+        </a>
+        <a class="launcher-card" href="gestao-ativos/index.html" style="--accent:#009b76">
+          <span class="launcher-icon">ATM</span><h2>Gestão de Ativos</h2>
+          <p>Inventário, cadastro e movimentação do parque tecnológico.</p><small>T.I.</small>
+        </a>
+        <a class="launcher-card" href="atendimento-itsm/index.html" style="--accent:#e66d24">
+          <span class="launcher-icon">IT</span><h2>Atendimento ITSM</h2>
+          <p>Abertura e acompanhamento simples de solicitações e incidentes.</p><small>Usuário · Líder · Supervisor · T.I.</small>
+        </a>
+        <a class="launcher-card" href="planner-ti/index.html" style="--accent:#d3486f">
+          <span class="launcher-icon">PLN</span><h2>Planner da T.I.</h2>
+          <p>Organização visual das prioridades e entregas da equipe.</p><small>T.I. · Protótipo local</small>
+        </a>
+      </section>
+    </main>
+  </body>
+</html>

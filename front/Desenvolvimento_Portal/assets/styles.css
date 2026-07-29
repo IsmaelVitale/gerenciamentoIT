@@ -200,6 +200,14 @@ svg {
   font-size: 10px;
 }
 
+.sidebar-footer a {
+  display: inline-block;
+  margin-top: 8px;
+  color: #8fb3f6;
+  font-size: 9px;
+  text-decoration: none;
+}
+
 .environment-dot {
   width: 9px;
   height: 9px;
