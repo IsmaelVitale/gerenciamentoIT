@@ -13,10 +13,10 @@
       <aside class="app-sidebar">
         <div class="app-brand"><span class="brand-icon">OPS</span><span><strong>Gestão Operacional</strong><small>GerenciamentoIT</small></span></div>
         <nav class="app-nav">
-          <button class="active" data-view-target="dashboard">Resumo</button>
-          <button data-view-target="people">Pessoas e acessos</button>
-          <button data-view-target="structure">Setores e turnos</button>
-          <a href="../index.html">Outras aplicações</a>
+          <button class="active" data-icon="01" data-view-target="dashboard">Resumo</button>
+          <button data-icon="02" data-view-target="people" data-permission="USUARIO_VISUALIZAR">Pessoas e acessos</button>
+          <button data-icon="03" data-view-target="structure" data-permission="SETOR_VISUALIZAR,TURNO_VISUALIZAR">Setores e turnos</button>
+          <a data-icon="↗" href="../index.html">Outras aplicações</a>
         </nav>
         <div class="app-sidebar-footer"><a href="../../Desenvolvimento_Portal/index.html">Abrir portal técnico</a></div>
       </aside>
@@ -43,7 +43,7 @@
           <section class="view" data-view="people">
             <header class="page-head"><div><span class="kicker">EQUIPE</span><h1>Pessoas e acessos</h1><p>Localize um colaborador, cadastre quando necessário e defina seu escopo.</p></div></header>
             <div class="content-grid">
-              <article class="panel">
+              <article class="panel" data-permission="USUARIO_CRIAR">
                 <div class="panel-head"><div><h2>Localizar colaborador</h2><p>Busque pela matrícula exata.</p></div></div>
                 <form class="search-row" id="search-user-form"><input name="matricula" placeholder="Matrícula" required /><button class="primary-button" type="submit">Buscar</button></form>
                 <div id="user-result"><div class="empty-state">Nenhum colaborador selecionado.</div></div>
@@ -56,7 +56,7 @@
                   <div class="form-actions"><button class="primary-button" type="submit">Cadastrar colaborador</button></div>
                 </form>
               </article>
-              <article class="panel panel--wide">
+              <article class="panel panel--wide" data-permission="USUARIO_ATRIBUIR_ACESSO">
                 <div class="panel-head"><div><h2>Definir acesso</h2><p>O papel determina as funcionalidades; setor e turno determinam o alcance.</p></div></div>
                 <form class="form-grid" id="assign-form">
                   <label class="field"><span>Colaborador</span><input name="userName" id="selected-user-name" placeholder="Selecione pela busca" disabled /><input type="hidden" name="userId" id="selected-user-id" /></label>
@@ -74,7 +74,7 @@
           <section class="view" data-view="structure">
             <header class="page-head"><div><span class="kicker">ESTRUTURA</span><h1>Setores e turnos</h1><p>Cadastre as bases que serão usadas nas atribuições e conferências.</p></div></header>
             <div class="content-grid">
-              <article class="panel">
+              <article class="panel" data-permission="SETOR_CRIAR">
                 <div class="panel-head"><div><h2>Novo setor</h2><p>Identifique a área e informe sua cota de PDAs.</p></div></div>
                 <form class="form-grid" id="sector-form">
                   <label class="field"><span>Código</span><input name="codigo" placeholder="RECEBIMENTO" required /></label>
@@ -83,7 +83,7 @@
                   <div class="form-actions"><button class="primary-button" type="submit">Criar setor</button></div>
                 </form>
               </article>
-              <article class="panel">
+              <article class="panel" data-permission="TURNO_CRIAR">
                 <div class="panel-head"><div><h2>Novo turno</h2><p>Defina o período de funcionamento.</p></div></div>
                 <form class="form-grid" id="shift-form">
                   <label class="field"><span>Código</span><input name="codigo" placeholder="MANHA" required /></label>
