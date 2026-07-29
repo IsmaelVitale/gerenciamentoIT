@@ -2,7 +2,7 @@
 
 Documentação funcional e técnica exclusiva da aplicação **Hub de PDAs**.
 
-> Status: planejamento. Esta documentação descreve o produto que será construído; ela não afirma que os fluxos ou contratos aqui apresentados já estejam implementados.
+> Status: em desenvolvimento. Identificação, sessão e contexto operacional já utilizam a API real; as demais seções distinguem os contratos implementados dos fluxos ainda planejados.
 
 ## 1. Objetivo
 
@@ -501,30 +501,44 @@ Requisitos mínimos:
 - fonte e contraste adequados ao ambiente operacional;
 - confirmação adicional para ações destrutivas ou sensíveis.
 
-## 15. Contratos previstos com a API
+## 15. Contratos com a API
 
-Os endpoints abaixo são uma proposta inicial e deverão ser validados durante o desenho da API. Eles ainda não representam contratos implementados.
+Os contratos não utilizam o nome do frontend na URL. A API expõe recursos de negócio universais, enquanto o Hub organiza esses recursos no fluxo operacional.
+
+Já implementados:
 
 ```http
 POST /api/v1/sessoes
-GET  /api/v1/hub/contextos
-GET  /api/v1/hub/contextos/{id}/resumo
+GET  /api/v1/me
+DELETE /api/v1/sessoes/atual
+GET  /api/v1/me/contextos-operacionais
+```
+
+Previstos para as próximas etapas:
+
+```http
+GET  /api/v1/ativos
+GET  /api/v1/ativos/{id}
+GET  /api/v1/ativos/identificadores/{codigo}
 
 POST /api/v1/conferencias
 GET  /api/v1/conferencias/{id}
+GET  /api/v1/conferencias/{id}/itens
 POST /api/v1/conferencias/{id}/leituras
-POST /api/v1/conferencias/{id}/envio
+POST /api/v1/conferencias/{id}/conclusoes
 
-GET  /api/v1/pdas/codigo/{codigo}
-POST /api/v1/pdas/{id}/emprestimos
+POST /api/v1/emprestimos
 POST /api/v1/emprestimos/{id}/recebimentos
 POST /api/v1/emprestimos/{id}/devolucoes
-POST /api/v1/pdas/{id}/indisponibilidades
-POST /api/v1/pdas/{id}/retornos-disponibilidade
-POST /api/v1/pdas/{id}/envios-manutencao
 
-POST /api/v1/hub/sincronizacoes
-GET  /api/v1/hub/operacoes/{identificador}
+POST /api/v1/indisponibilidades
+POST /api/v1/indisponibilidades/{id}/encerramentos
+
+POST /api/v1/envios-manutencao
+POST /api/v1/envios-manutencao/{id}/retornos
+
+POST /api/v1/sincronizacoes
+GET  /api/v1/operacoes/{identificador}
 ```
 
 Todos os comandos offline deverão aceitar uma chave de idempotência.
@@ -557,37 +571,36 @@ Dados locais mínimos:
 
 ## 17. Primeiro marco executável
 
-O primeiro objetivo de desenvolvimento será permitir que o projeto seja iniciado e visualizado antes da integração completa.
+O primeiro marco visual foi concluído e substituído pela integração inicial real.
 
-Esse marco deverá entregar:
+O estado atual entrega:
 
 - estrutura inicial do frontend;
 - comando documentado para execução local;
-- tela de identificação;
+- tela de identificação integrada a `POST /api/v1/sessoes`;
 - tela inicial do Hub;
-- contexto simulado de setor e turno;
-- simulador de bipagem por teclado;
-- tela de conferência;
-- resumo com dados simulados;
+- contexto autorizado vindo da API;
+- seleção quando houver mais de um contexto;
+- sessão mantida em `sessionStorage` e revogada no logout;
+- estados de carregamento, erro, sessão expirada e ausência de contexto;
 - indicador online e offline;
-- navegação sem persistir mudanças reais na API.
+- navegação sem persistir operações de ativo.
 
-Esse marco servirá para validar o fluxo visual e a experiência com o leitor. Dados simulados deverão ser claramente identificados e isolados para posterior substituição pelos contratos reais.
+A conferência por bipagem e seu resumo continuam na Etapa 1.
 
 ## 18. Etapas de entrega
 
 ### Etapa 0 — Estrutura visual executável
 
-- definir framework;
-- criar projeto e scripts de execução;
-- aplicar identidade visual inicial;
-- implementar as telas principais com dados simulados;
-- validar uso por teclado e leitor.
+- concluída com React, TypeScript, Vite e fundação PWA;
+- identidade visual desktop-first aplicada;
+- identificação por teclado e leitor preparada;
+- modo simulado removido depois da validação visual inicial.
 
 ### Etapa 1 — Conferência online
 
-- integrar autenticação;
-- carregar contexto real;
+- autenticação integrada;
+- contexto real integrado;
 - abrir conferência;
 - registrar leituras;
 - enviar e mostrar o resultado da API.
@@ -651,13 +664,19 @@ O MVP do Hub estará funcional quando:
 
 ## 21. Decisões ainda abertas
 
-Antes ou durante a Etapa 0, será necessário decidir:
+Decisões já tomadas:
 
-- framework do frontend;
-- dispositivo e navegador-alvo;
+- React, TypeScript e Vite;
+- SPA/PWA desktop-first com suporte secundário a tablet;
+- API local até o MVP estar pronto;
+- endpoints universais por recurso de negócio;
+- autenticação inicial provisória por matrícula;
+- token da sessão mantido em `sessionStorage`.
+
+Ainda será necessário decidir:
+
 - modelo do leitor e sufixo utilizado;
 - leitura apenas por leitor ou também por câmera;
-- método inicial de identificação;
 - duração da sessão e bloqueio por inatividade;
 - política para cancelar uma conferência iniciada;
 - necessidade de reimpressão de etiqueta no MVP;
@@ -680,4 +699,3 @@ Uma funcionalidade do Hub somente será considerada concluída quando:
 - possuir testes automatizados relevantes;
 - ter sido testada online e, quando aplicável, offline;
 - atualizar esta documentação se alterar uma regra do produto.
-

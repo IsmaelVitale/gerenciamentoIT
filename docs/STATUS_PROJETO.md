@@ -1,10 +1,10 @@
 # Estado do projeto GerenciamentoIT
 
-Atualizado em 27 de julho de 2026.
+Atualizado em 29 de julho de 2026.
 
 ## Visao atual
 
-O repositorio ja possui uma fundacao executavel para a API central e iniciou duas verticais funcionais: inventario de ativos e abertura de chamados. O bot do WhatsApp deixou de ser apenas uma simulacao estrutural e agora possui contrato real com a API, embora continue desativado por padrao por meio de `SIMULATION_MODE=true`.
+O repositorio possui uma fundacao executavel para a API central, inventario inicial de ativos, abertura de chamados e o primeiro fluxo real do Hub de PDAs. O bot do WhatsApp possui contrato real com a API, embora continue desativado por padrao por meio de `SIMULATION_MODE=true`.
 
 ## Entregas concluidas
 
@@ -39,6 +39,17 @@ O repositorio ja possui uma fundacao executavel para a API central e iniciou dua
 - recusa de chamados em grupos;
 - CI de sintaxe para o bot.
 
+### Hub de PDAs
+
+- SPA/PWA desktop-first com React, TypeScript e Vite;
+- identificacao real por matricula com origem `HUB_PDA`;
+- token opaco mantido durante a sessao do navegador;
+- restauracao e revogacao da sessao;
+- endpoint universal `GET /api/v1/me/contextos-operacionais`;
+- selecao de setor e turno autorizados;
+- estados de carregamento, erro, API indisponivel e ausencia de contexto;
+- modo simulado removido do Hub.
+
 ## Decisoes preservadas
 
 - a API e a fonte de verdade das regras e da autorizacao;
@@ -47,16 +58,20 @@ O repositorio ja possui uma fundacao executavel para a API central e iniciou dua
 - o numero de telefone e somente contato;
 - mensagens repetidas do WhatsApp nao devem criar chamados duplicados;
 - o banco e o schema continuam sendo criados automaticamente nesta fase;
-- Flyway e Liquibase ainda nao foram introduzidos.
+- Flyway e Liquibase ainda nao foram introduzidos;
+- endpoints representam recursos de negocio e nao recebem o nome de um frontend;
+- o frontend organiza o fluxo, mas a API preserva regras, autorizacao e estado real.
 
 ## Proximos incrementos recomendados
 
-1. **ITSM basico:** triagem, categoria, prioridade, atribuicao, mensagens publicas, resolucao e fechamento.
-2. **Vinculacao segura do WhatsApp:** substituir matricula isolada por OTP, senha, SSO, cracha ou outro fator e persistir a associacao autorizada entre usuario e telefone.
-3. **Portal de Chamados:** adaptar a interface do solicitante aos novos endpoints reais.
-4. **Operacao de PDAs:** distribuicao permanente, conferencia por turno, emprestimos, manutencoes e divergencias.
-5. **Planner:** quadros, tarefas e sincronismo entre chamado e tarefa.
-6. **Evolucao de banco:** introduzir migracoes versionadas antes de ambientes produtivos compartilhados.
+1. **Conferencia online de PDAs:** abrir conferencia, carregar o pool esperado, registrar leituras e concluir com validacao da API.
+2. **Acoes rapidas de PDAs:** consulta, emprestimo, recebimento, devolucao, indisponibilidade e manutencao.
+3. **Operacao offline do Hub:** IndexedDB, fila idempotente, sincronizacao e conflitos.
+4. **ITSM basico:** triagem, categoria, prioridade, atribuicao, mensagens publicas, resolucao e fechamento.
+5. **Vinculacao segura do WhatsApp:** substituir matricula isolada por OTP, senha, SSO, cracha ou outro fator e persistir a associacao autorizada entre usuario e telefone.
+6. **Portal de Chamados:** adaptar a interface do solicitante aos novos endpoints reais.
+7. **Planner:** quadros, tarefas e sincronismo entre chamado e tarefa.
+8. **Evolucao de banco:** introduzir migracoes versionadas antes de ambientes produtivos compartilhados.
 
 ## Riscos e dividas tecnicas
 
@@ -65,8 +80,9 @@ O repositorio ja possui uma fundacao executavel para a API central e iniciou dua
 - o estado conversacional pendente do bot fica somente em memoria;
 - `ddl-auto=update` nao substitui migracoes controladas;
 - os frontends antigos ainda sao referencia visual e nao representam integralmente os contratos atuais;
+- conferencia, acoes rapidas e fila offline do Hub ainda nao foram implementadas;
 - monitoramento, rate limiting, politicas de retencao e observabilidade do bot ainda precisam ser definidos.
 
 ## Orientacao de trabalho
 
-A proxima frente mais coerente e o **ITSM basico**, porque transforma o chamado aberto pelo WhatsApp ou pelo futuro portal em um fluxo atendivel pela T.I. Sem essa etapa, o sistema recebe chamados, mas ainda nao oferece triagem, atribuicao ou resolucao operacional.
+A frente ativa e o **Hub de PDAs**. O proximo incremento recomendado e a conferencia online, usando os contratos universais da API e mantendo o frontend responsavel apenas pelo fluxo e pela apresentacao.
