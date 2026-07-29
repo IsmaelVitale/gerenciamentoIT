@@ -53,6 +53,7 @@ A primeira etapa implementada inclui:
 - sessoes opacas por matricula;
 - usuarios, papeis, permissoes e escopos;
 - setores e turnos;
+- contextos operacionais universais por usuario;
 - tipos de ativo;
 - cadastro e liberacao inicial de ativos;
 - numero de serie obrigatorio;
@@ -61,7 +62,7 @@ A primeira etapa implementada inclui:
 - historico inicial de movimentacoes;
 - criacao automatica do banco e do schema.
 
-Os frontends antigos permanecem apenas como referencia visual e ainda nao consomem os novos contratos.
+O Hub de PDAs possui frontend React/TypeScript/Vite e ja consome os contratos reais de sessao e contexto operacional. Os demais frontends antigos permanecem apenas como referencia visual.
 
 ## 3. Principio central de autorizacao
 
@@ -88,6 +89,8 @@ O aplicativo de origem sera apenas um metadado de auditoria, por exemplo:
 - ITSM;
 - Planner;
 - WhatsApp futuramente.
+
+Os endpoints devem representar recursos de negocio reutilizaveis, sem carregar o nome de um frontend na URL. Cada frontend organiza a experiencia e o fluxo, enquanto a API permanece responsavel por autorizacao, regras, auditoria e estado real.
 
 Um usuario nao podera contornar uma regra chamando diretamente um endpoint usado por outro aplicativo.
 

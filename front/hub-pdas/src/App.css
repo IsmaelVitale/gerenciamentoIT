@@ -120,12 +120,12 @@ svg {
   gap: 14px;
 }
 
-.simulation-pill {
+.real-api-pill {
   padding: 7px 11px;
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  border: 1px solid rgba(122, 217, 93, 0.32);
   border-radius: 999px;
-  color: #dce8f8;
-  background: rgba(255, 255, 255, 0.08);
+  color: #dff8d8;
+  background: rgba(72, 160, 52, 0.16);
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -374,6 +374,11 @@ svg {
   background: var(--blue-700);
 }
 
+.scan-input-wrapper button:disabled {
+  cursor: wait;
+  opacity: 0.62;
+}
+
 .ready-status {
   display: flex;
   align-items: center;
@@ -389,6 +394,16 @@ svg {
   padding: 3px;
   border: 2px solid currentColor;
   border-radius: 50%;
+}
+
+.ready-status.is-unavailable {
+  color: var(--red-700);
+}
+
+.ready-status.is-unavailable svg {
+  padding: 1px;
+  border: 0;
+  border-radius: 0;
 }
 
 .simulation-hint {
@@ -425,6 +440,16 @@ svg {
   border-radius: 12px;
   background: var(--white);
   box-shadow: var(--shadow-sm);
+  font: inherit;
+  text-align: left;
+}
+
+.context-chip:not(:disabled) {
+  cursor: pointer;
+}
+
+.context-chip:disabled {
+  opacity: 1;
 }
 
 .context-chip span {
@@ -462,6 +487,11 @@ svg {
   background: var(--orange-500);
   font-size: 2.4rem;
   font-weight: 900;
+}
+
+.pending-icon svg {
+  width: 38px;
+  height: 38px;
 }
 
 .pending-banner > div {
@@ -647,6 +677,131 @@ svg {
   color: var(--slate-950);
 }
 
+.loading-screen {
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  color: var(--slate-700);
+}
+
+.loading-spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--slate-200);
+  border-top-color: var(--blue-600);
+  border-radius: 50%;
+  animation: spin 800ms linear infinite;
+}
+
+.context-screen {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+  padding: 42px;
+}
+
+.context-heading {
+  margin-bottom: 28px;
+}
+
+.context-heading h1 {
+  margin: 0;
+  color: var(--slate-950);
+  font-size: clamp(2rem, 3.4vw, 3rem);
+  line-height: 1.05;
+  letter-spacing: -0.045em;
+}
+
+.context-heading p {
+  margin: 10px 0 0;
+  color: var(--slate-600);
+  font-size: 1.05rem;
+}
+
+.context-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.context-card {
+  min-height: 150px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 24px;
+  border: 1px solid #b8cff5;
+  border-radius: 18px;
+  color: var(--slate-950);
+  background: var(--white);
+  text-align: left;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.context-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--blue-600);
+  box-shadow: 0 10px 25px rgba(16, 32, 59, 0.1);
+}
+
+.context-card > span {
+  color: var(--blue-700);
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.context-card strong {
+  margin-top: 8px;
+  font-size: 1.25rem;
+}
+
+.context-card small {
+  margin-top: 8px;
+  color: var(--slate-600);
+  font-weight: 650;
+}
+
+.empty-context {
+  min-height: 180px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 28px;
+  border: 1px solid #f1bd7e;
+  border-radius: 18px;
+  color: #713700;
+  background: #fff8eb;
+}
+
+.empty-context > svg {
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+}
+
+.empty-context strong {
+  font-size: 1.15rem;
+}
+
+.empty-context p {
+  margin: 7px 0 0;
+  line-height: 1.5;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .toast {
   position: fixed;
   right: 24px;
@@ -711,7 +866,7 @@ svg {
   }
 
   .brand span,
-  .simulation-pill {
+  .real-api-pill {
     display: none;
   }
 
@@ -750,6 +905,14 @@ svg {
 
   .identification-card {
     padding: 32px 28px 26px;
+  }
+
+  .context-screen {
+    padding: 28px 20px;
+  }
+
+  .context-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .scan-input-wrapper {

@@ -1,8 +1,20 @@
 import { useEffect, useRef, useState } from 'react'
-import type { FormEvent } from 'react'
+import type { FormEvent, ReactNode, RefObject } from 'react'
+import {
+  ApiRequestError,
+  apiBaseUrl,
+  createSession,
+  getAuthenticatedUser,
+  getOperationalContexts,
+  revokeCurrentSession,
+} from './api'
+import type {
+  AuthenticatedUser,
+  OperationalContext,
+} from './api'
 import './App.css'
 
-type Screen = 'identification' | 'home'
+type Screen = 'identification' | 'context' | 'home'
 
 type IconName =
   | 'badge'
@@ -17,14 +29,18 @@ type IconName =
   | 'warning'
   | 'wifi'
 
-const apiBaseUrl =
-  import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080/api'
-const simulationMode = import.meta.env.VITE_SIMULATION_MODE !== 'false'
+const sessionTokenKey = 'hub-pdas.session-token'
 
 function App() {
   const [screen, setScreen] = useState<Screen>('identification')
+  const [restoringSession, setRestoringSession] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
   const [registration, setRegistration] = useState('')
-  const [leaderName, setLeaderName] = useState('Líder')
+  const [token, setToken] = useState<string | null>(null)
+  const [user, setUser] = useState<AuthenticatedUser | null>(null)
+  const [contexts, setContexts] = useState<OperationalContext[]>([])
+  const [selectedContext, setSelectedContext] =
+    useState<OperationalContext | null>(null)
   const [online, setOnline] = useState(navigator.onLine)
   const [notice, setNotice] = useState<string | null>(null)
   const registrationInput = useRef<HTMLInputElement>(null)
@@ -43,19 +59,78 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (screen === 'identification') {
+    let active = true
+    const savedToken = sessionStorage.getItem(sessionTokenKey)
+
+    if (!savedToken) {
+      setRestoringSession(false)
+      return
+    }
+
+    Promise.all([
+      getAuthenticatedUser(savedToken),
+      getOperationalContexts(savedToken),
+    ])
+      .then(([authenticatedUser, availableContexts]) => {
+        if (!active) return
+        applyAuthenticatedSession(
+          savedToken,
+          authenticatedUser,
+          availableContexts,
+        )
+      })
+      .catch((error: unknown) => {
+        if (!active) return
+        if (error instanceof ApiRequestError && error.status === 401) {
+          sessionStorage.removeItem(sessionTokenKey)
+          setNotice('A sessão anterior expirou. Identifique-se novamente.')
+        } else {
+          setNotice(errorMessage(error))
+        }
+      })
+      .finally(() => {
+        if (active) setRestoringSession(false)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!restoringSession && screen === 'identification') {
       registrationInput.current?.focus()
     }
-  }, [screen])
+  }, [restoringSession, screen])
 
   useEffect(() => {
     if (!notice) return
 
-    const timeout = window.setTimeout(() => setNotice(null), 4000)
+    const timeout = window.setTimeout(() => setNotice(null), 6000)
     return () => window.clearTimeout(timeout)
   }, [notice])
 
-  function handleIdentification(event: FormEvent<HTMLFormElement>) {
+  function applyAuthenticatedSession(
+    sessionToken: string,
+    authenticatedUser: AuthenticatedUser,
+    availableContexts: OperationalContext[],
+  ) {
+    sessionStorage.setItem(sessionTokenKey, sessionToken)
+    setToken(sessionToken)
+    setUser(authenticatedUser)
+    setContexts(availableContexts)
+
+    if (availableContexts.length === 1) {
+      setSelectedContext(availableContexts[0])
+      setScreen('home')
+      return
+    }
+
+    setSelectedContext(null)
+    setScreen('context')
+  }
+
+  async function handleIdentification(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const normalizedRegistration = registration.trim()
 
@@ -65,22 +140,67 @@ function App() {
       return
     }
 
-    setLeaderName(
-      simulationMode ? 'Líder de Recebimento' : normalizedRegistration,
-    )
-    setRegistration('')
+    if (!navigator.onLine) {
+      setNotice('O primeiro acesso real exige conexão com a API.')
+      return
+    }
+
+    setSubmitting(true)
+    let createdToken: string | null = null
+
+    try {
+      const createdSession = await createSession(normalizedRegistration)
+      createdToken = createdSession.token
+      const availableContexts = await getOperationalContexts(createdToken)
+      applyAuthenticatedSession(
+        createdToken,
+        createdSession.usuario,
+        availableContexts,
+      )
+      setRegistration('')
+    } catch (error) {
+      if (createdToken) {
+        await revokeCurrentSession(createdToken).catch(() => undefined)
+      }
+      sessionStorage.removeItem(sessionTokenKey)
+      setNotice(errorMessage(error))
+      registrationInput.current?.focus()
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleLogout() {
+    const currentToken = token
+    sessionStorage.removeItem(sessionTokenKey)
+    setToken(null)
+    setUser(null)
+    setContexts([])
+    setSelectedContext(null)
+    setScreen('identification')
+    setNotice('Sessão encerrada.')
+
+    if (currentToken) {
+      try {
+        await revokeCurrentSession(currentToken)
+      } catch {
+        setNotice(
+          'Sessão encerrada neste terminal, mas a API não confirmou a revogação.',
+        )
+      }
+    }
+  }
+
+  function handleContextSelection(context: OperationalContext) {
+    setSelectedContext(context)
     setScreen('home')
   }
 
-  function handleLogout() {
-    setScreen('identification')
-    setLeaderName('Líder')
-    setNotice('Sessão encerrada.')
+  function showPlannedFeature(feature: string) {
+    setNotice(`${feature} será implementada na próxima etapa do MVP.`)
   }
 
-  function showPlannedFeature(feature: string) {
-    setNotice(`${feature} será conectado à API em uma próxima entrega.`)
-  }
+  const authenticated = user !== null && token !== null
 
   return (
     <div className="app-shell">
@@ -101,7 +221,7 @@ function App() {
         </div>
 
         <div className="topbar-status">
-          {simulationMode && <span className="simulation-pill">Simulação</span>}
+          <span className="real-api-pill">API real</span>
           <span
             className={`connection-status ${online ? 'is-online' : 'is-offline'}`}
             role="status"
@@ -118,9 +238,9 @@ function App() {
           className={`sidebar-button ${screen === 'home' ? 'is-active' : ''}`}
           aria-label="Início"
           onClick={() => {
-            if (screen === 'home') setScreen('home')
+            if (selectedContext) setScreen('home')
           }}
-          disabled={screen === 'identification'}
+          disabled={!authenticated || !selectedContext}
         >
           <Icon name="home" />
           <span>Início</span>
@@ -130,7 +250,7 @@ function App() {
           className="sidebar-button"
           aria-label="Conferências"
           onClick={() => showPlannedFeature('A conferência')}
-          disabled={screen === 'identification'}
+          disabled={screen !== 'home'}
         >
           <Icon name="clipboard" />
           <span>Conferir</span>
@@ -147,20 +267,36 @@ function App() {
       </aside>
 
       <main className="main-content">
-        {screen === 'identification' ? (
+        {restoringSession ? (
+          <LoadingScreen />
+        ) : screen === 'identification' ? (
           <IdentificationScreen
             registration={registration}
             inputRef={registrationInput}
+            submitting={submitting}
+            online={online}
             onRegistrationChange={setRegistration}
             onSubmit={handleIdentification}
           />
-        ) : (
+        ) : screen === 'context' && user ? (
+          <ContextSelectionScreen
+            user={user}
+            contexts={contexts}
+            onSelect={handleContextSelection}
+            onLogout={handleLogout}
+          />
+        ) : user && selectedContext ? (
           <HomeScreen
-            leaderName={leaderName}
+            user={user}
+            context={selectedContext}
+            contextsCount={contexts.length}
             online={online}
+            onChangeContext={() => setScreen('context')}
             onLogout={handleLogout}
             onPlannedFeature={showPlannedFeature}
           />
+        ) : (
+          <LoadingScreen />
         )}
       </main>
 
@@ -186,9 +322,33 @@ function App() {
   )
 }
 
+function errorMessage(error: unknown): string {
+  if (error instanceof ApiRequestError) {
+    if (error.code === 'MATRICULA_NAO_ENCONTRADA') {
+      return 'Matrícula não encontrada na API.'
+    }
+    if (error.status === 401) {
+      return 'Sessão ausente, expirada ou inválida.'
+    }
+    return error.message
+  }
+  return 'Não foi possível concluir a operação.'
+}
+
+function LoadingScreen() {
+  return (
+    <section className="loading-screen" aria-live="polite">
+      <span className="loading-spinner" aria-hidden="true" />
+      <strong>Validando sessão com a API...</strong>
+    </section>
+  )
+}
+
 interface IdentificationScreenProps {
   registration: string
-  inputRef: React.RefObject<HTMLInputElement | null>
+  inputRef: RefObject<HTMLInputElement | null>
+  submitting: boolean
+  online: boolean
   onRegistrationChange: (value: string) => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
 }
@@ -196,6 +356,8 @@ interface IdentificationScreenProps {
 function IdentificationScreen({
   registration,
   inputRef,
+  submitting,
+  online,
   onRegistrationChange,
   onSubmit,
 }: IdentificationScreenProps) {
@@ -211,10 +373,14 @@ function IdentificationScreen({
         <div className="identification-copy">
           <span className="eyebrow">Identificação do responsável</span>
           <h1 id="identify-title">Bipe seu crachá</h1>
-          <p>ou digite sua matrícula para iniciar a operação</p>
+          <p>ou digite sua matrícula para iniciar a operação real</p>
         </div>
 
-        <form className="scan-form" onSubmit={onSubmit}>
+        <form
+          className="scan-form"
+          onSubmit={onSubmit}
+          aria-busy={submitting}
+        >
           <label htmlFor="registration">Matrícula ou código do crachá</label>
           <div className="scan-input-wrapper">
             <Icon name="barcode" />
@@ -226,34 +392,106 @@ function IdentificationScreen({
               onChange={(event) => onRegistrationChange(event.target.value)}
               autoComplete="off"
               placeholder="Aguardando leitura..."
+              disabled={submitting}
             />
-            <button type="submit">Continuar</button>
+            <button type="submit" disabled={submitting || !online}>
+              {submitting ? 'Validando...' : 'Continuar'}
+            </button>
           </div>
         </form>
 
-        <div className="ready-status" role="status">
-          <Icon name="check" />
-          <span>Pronto para leitura</span>
+        <div className={`ready-status ${online ? '' : 'is-unavailable'}`}>
+          <Icon name={online ? 'check' : 'warning'} />
+          <span>
+            {online
+              ? 'API real preparada para autenticação'
+              : 'Sem conexão para o primeiro acesso'}
+          </span>
         </div>
 
         <p className="simulation-hint">
-          No modo simulado, qualquer matrícula permite visualizar o Hub.
+          A matrícula deve existir e estar ativa na API local.
         </p>
       </div>
     </section>
   )
 }
 
+interface ContextSelectionScreenProps {
+  user: AuthenticatedUser
+  contexts: OperationalContext[]
+  onSelect: (context: OperationalContext) => void
+  onLogout: () => void
+}
+
+function ContextSelectionScreen({
+  user,
+  contexts,
+  onSelect,
+  onLogout,
+}: ContextSelectionScreenProps) {
+  return (
+    <section className="context-screen" aria-labelledby="context-title">
+      <div className="context-heading">
+        <span className="eyebrow">Contexto operacional</span>
+        <h1 id="context-title">Olá, {user.nome}</h1>
+        <p>Selecione o setor e o turno em que você irá operar.</p>
+      </div>
+
+      {contexts.length > 0 ? (
+        <div className="context-grid">
+          {contexts.map((context) => (
+            <button
+              key={`${context.setor.id}:${context.turno.id}`}
+              type="button"
+              className="context-card"
+              onClick={() => onSelect(context)}
+            >
+              <span>{context.setor.codigo}</span>
+              <strong>{context.setor.nome}</strong>
+              <small>
+                {context.turno.nome} • cota de {context.setor.cotaPdas} PDAs
+              </small>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="empty-context">
+          <Icon name="warning" />
+          <div>
+            <strong>Nenhum contexto operacional disponível</strong>
+            <p>
+              A API não encontrou uma combinação ativa de setor e turno
+              autorizada para este usuário.
+            </p>
+          </div>
+        </div>
+      )}
+
+      <button type="button" className="logout-button" onClick={onLogout}>
+        <Icon name="logout" />
+        <span>Sair e bloquear o terminal</span>
+      </button>
+    </section>
+  )
+}
+
 interface HomeScreenProps {
-  leaderName: string
+  user: AuthenticatedUser
+  context: OperationalContext
+  contextsCount: number
   online: boolean
+  onChangeContext: () => void
   onLogout: () => void
   onPlannedFeature: (feature: string) => void
 }
 
 function HomeScreen({
-  leaderName,
+  user,
+  context,
+  contextsCount,
   online,
+  onChangeContext,
   onLogout,
   onPlannedFeature,
 }: HomeScreenProps) {
@@ -262,28 +500,42 @@ function HomeScreen({
       <div className="home-heading">
         <div>
           <span className="eyebrow">Operação atual</span>
-          <h1 id="home-title">Bom dia, {leaderName}</h1>
-          <p>Recebimento • Turno T1</p>
+          <h1 id="home-title">Bom dia, {user.nome}</h1>
+          <p>
+            {context.setor.nome} • {context.turno.nome}
+          </p>
         </div>
-        <div className="context-chip">
-          <span>Contexto simulado</span>
-          <strong>Recebimento / T1</strong>
-        </div>
+        <button
+          type="button"
+          className="context-chip"
+          onClick={onChangeContext}
+          disabled={contextsCount < 2}
+          title={
+            contextsCount < 2
+              ? 'Este usuário possui apenas um contexto'
+              : 'Trocar contexto operacional'
+          }
+        >
+          <span>Contexto autorizado</span>
+          <strong>
+            {context.setor.codigo} / {context.turno.codigo}
+          </strong>
+        </button>
       </div>
 
       <div className="pending-banner">
         <span className="pending-icon" aria-hidden="true">
-          !
+          <Icon name="check" />
         </span>
         <div>
-          <span>Abertura pendente</span>
-          <strong>12 PDAs esperadas</strong>
+          <span>Integração real ativa</span>
+          <strong>Cota cadastrada: {context.setor.cotaPdas} PDAs</strong>
         </div>
         <button
           type="button"
           onClick={() => onPlannedFeature('A conferência de abertura')}
         >
-          Ver detalhes
+          Próxima etapa
         </button>
       </div>
 
@@ -323,8 +575,8 @@ function HomeScreen({
             <Icon name="wifi" />
           </span>
           <div>
-            <small>Fila offline</small>
-            <strong>0 operações</strong>
+            <small>Terminal</small>
+            <strong>{online ? 'rede disponível' : 'sem conexão'}</strong>
           </div>
         </article>
 
@@ -333,8 +585,8 @@ function HomeScreen({
             <Icon name="refresh" />
           </span>
           <div>
-            <small>Última sincronização</small>
-            <strong>{online ? 'agora' : 'aguardando conexão'}</strong>
+            <small>Sessão</small>
+            <strong>{user.matricula} • HUB_PDA</strong>
           </div>
         </article>
 
@@ -343,8 +595,8 @@ function HomeScreen({
             <Icon name="check" />
           </span>
           <div>
-            <small>Encerramento anterior</small>
-            <strong>concluído sem divergências</strong>
+            <small>Contexto</small>
+            <strong>autorizado pela API</strong>
           </div>
         </article>
       </div>
@@ -358,7 +610,7 @@ function HomeScreen({
 }
 
 function Icon({ name }: { name: IconName }) {
-  const paths: Record<IconName, React.ReactNode> = {
+  const paths: Record<IconName, ReactNode> = {
     badge: (
       <>
         <rect x="7" y="3" width="10" height="4" rx="2" />

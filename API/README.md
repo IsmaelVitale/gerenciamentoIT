@@ -11,6 +11,7 @@ Fundacao da nova API central do GerenciamentoIT.
 - sessao opaca autenticada por matricula;
 - papeis e escopos de acesso;
 - setores e turnos;
+- contextos operacionais autorizados por usuario;
 - tipos de ativo;
 - cadastro e liberacao de ativos;
 - numero de serie obrigatorio e unico;
@@ -117,6 +118,41 @@ Authorization: Bearer <token>
 ```
 
 A autenticacao somente por matricula e deliberadamente provisoria. O token de sessao impede que os comandos de negocio aceitem uma matricula arbitraria como autor da operacao.
+
+## Contextos operacionais
+
+Qualquer frontend autenticado pode consultar as combinacoes de setor e turno disponiveis para o usuario atual:
+
+```http
+GET /api/v1/me/contextos-operacionais
+Authorization: Bearer <token>
+```
+
+Usuarios com atribuicao setorial recebem somente as combinacoes vigentes e ativas de suas atribuicoes. Papeis globais (`SUPERVISOR`, `ANALISTA_TI` e `GESTOR_TI`) recebem as combinacoes entre todos os setores e turnos ativos.
+
+Exemplo de resposta:
+
+```json
+[
+  {
+    "setor": {
+      "id": "UUID-DO-SETOR",
+      "codigo": "RECEBIMENTO",
+      "nome": "Recebimento",
+      "cotaPdas": 12
+    },
+    "turno": {
+      "id": "UUID-DO-TURNO",
+      "codigo": "T1",
+      "nome": "Turno 1",
+      "horaInicio": "06:00:00",
+      "horaFim": "14:00:00"
+    }
+  }
+]
+```
+
+O contrato pertence ao dominio organizacional e nao a um frontend especifico. O Hub de PDAs, a Gestao Operacional e futuras interfaces podem reutiliza-lo.
 
 ## Chamados
 
