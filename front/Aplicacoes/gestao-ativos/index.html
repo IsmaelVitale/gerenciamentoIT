@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#073a32" /><title>Gestão de Ativos | GerenciamentoIT</title>
+    <link rel="stylesheet" href="../_shared/base.css" /><link rel="stylesheet" href="app.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="app-sidebar">
+        <div class="app-brand"><span class="brand-icon">ATM</span><span><strong>Gestão de Ativos</strong><small>GerenciamentoIT</small></span></div>
+        <nav class="app-nav"><button class="active" data-view-target="inventory">Inventário</button><button data-view-target="register">Novo ativo</button><button data-view-target="types">Tipos de ativo</button><button data-view-target="operations">Movimentações</button><a href="../index.html">Outras aplicações</a></nav>
+        <div class="app-sidebar-footer"><a href="../../Desenvolvimento_Portal/index.html">Abrir portal técnico</a></div>
+      </aside>
+      <main class="app-main">
+        <header class="app-topbar"><div class="page-context"><strong>Parque tecnológico</strong><small>Inventário e ciclo de vida</small></div><div class="user-cluster"><div class="current-user" id="current-user"></div><button class="icon-button" id="logout-button">↪</button></div></header>
+        <div class="app-content">
+          <section class="view active" data-view="inventory">
+            <header class="page-head"><div><span class="kicker">INVENTÁRIO</span><h1>Ativos de T.I.</h1><p>Localize equipamentos pelo número de série, patrimônio, tipo ou situação.</p></div><button class="primary-button" data-go-register>Novo ativo</button></header>
+            <form class="inventory-filter" id="inventory-filter"><input name="numeroSerie" placeholder="Número de série" /><input name="patrimonio" placeholder="Patrimônio" /><input name="tipo" placeholder="Tipo, ex.: PDA" /><select name="situacaoPatrimonial"><option value="">Todas as situações</option><option>EM_PREPARACAO</option><option>ATIVO</option><option>AGUARDANDO_BAIXA</option><option>BAIXADO</option></select><button class="secondary-button" type="submit">Pesquisar</button></form>
+            <div class="metric-grid"><article class="metric-card"><span>Resultados</span><strong id="asset-total">—</strong></article><article class="metric-card"><span>Disponíveis</span><strong id="asset-available">—</strong></article><article class="metric-card"><span>Ativos</span><strong id="asset-active">—</strong></article><article class="metric-card"><span>Tipos cadastrados</span><strong id="type-count">—</strong></article></div>
+            <article class="panel"><div class="panel-head"><div><h2>Equipamentos encontrados</h2><p>Clique em um item para usar seu ID nas movimentações.</p></div><button class="secondary-button" id="refresh-assets">Atualizar</button></div><div id="asset-table"><div class="empty-state">Entre para carregar o inventário.</div></div></article>
+          </section>
+
+          <section class="view" data-view="register">
+            <header class="page-head"><div><span class="kicker">CADASTRO</span><h1>Novo ativo</h1><p>Registre a identificação e as informações básicas do equipamento.</p></div></header>
+            <article class="panel form-panel">
+              <form class="form-grid" id="asset-form">
+                <label class="field"><span>Tipo de ativo</span><select name="tipoAtivoId" id="asset-type-select" required><option value="">Selecione</option></select></label>
+                <label class="field"><span>Número de série</span><input name="numeroSerie" required /></label>
+                <label class="field"><span>Patrimônio</span><input name="patrimonio" /></label>
+                <label class="field"><span>Fabricante</span><input name="fabricante" /></label>
+                <label class="field"><span>Modelo</span><input name="modelo" /></label>
+                <label class="field field--wide"><span>Observação</span><textarea name="observacao"></textarea></label>
+                <div class="form-actions"><button class="primary-button" type="submit">Cadastrar ativo</button><button class="secondary-button" type="reset">Limpar</button></div>
+              </form>
+            </article>
+          </section>
+
+          <section class="view" data-view="types">
+            <header class="page-head"><div><span class="kicker">CATÁLOGO</span><h1>Tipos de ativo</h1><p>Defina categorias universais para o inventário.</p></div></header>
+            <div class="content-grid">
+              <article class="panel"><div class="panel-head"><div><h2>Novo tipo</h2><p>Use um código curto e único.</p></div></div><form class="form-grid" id="type-form"><label class="field"><span>Código</span><input name="codigo" placeholder="MONITOR" required /></label><label class="field"><span>Nome</span><input name="nome" placeholder="Monitor" required /></label><label class="pool-check"><input name="controlaPool" type="checkbox" /><span>Este tipo controla pool</span></label><div class="form-actions"><button class="primary-button" type="submit">Criar tipo</button></div></form></article>
+              <article class="panel"><div class="panel-head"><div><h2>Catálogo atual</h2><p>Tipos disponíveis para novos cadastros.</p></div></div><div class="type-grid" id="type-list"></div></article>
+            </div>
+          </section>
+
+          <section class="view" data-view="operations">
+            <header class="page-head"><div><span class="kicker">CICLO DE VIDA</span><h1>Movimentar ativo</h1><p>Libere, aloque ou corrija a identificação de um equipamento.</p></div></header>
+            <div class="content-grid">
+              <article class="panel"><div class="panel-head"><div><h2>Selecionar ativo</h2><p>Cole o ID ou use um item do inventário.</p></div></div><form id="asset-detail-form" class="search-row"><input name="assetId" id="operation-asset-id" placeholder="ID do ativo" required /><button class="secondary-button" type="submit">Consultar</button></form><div id="asset-detail"><div class="empty-state">Nenhum ativo selecionado.</div></div></article>
+              <article class="panel"><div class="panel-head"><div><h2>Ação</h2><p>A API registra todas as movimentações.</p></div></div><form class="form-grid" id="operation-form"><label class="field"><span>Operação</span><select name="operation"><option value="release">Liberar para uso</option><option value="allocate">Alocar ao setor</option><option value="correct">Corrigir identificação</option></select></label><label class="field"><span>Setor</span><select name="setorId" id="operation-sector"><option value="">Selecione</option></select></label><label class="field"><span>Novo número de série</span><input name="numeroSerie" /></label><label class="field"><span>Novo patrimônio</span><input name="patrimonio" /></label><label class="field field--wide"><span>Motivo</span><textarea name="motivo" placeholder="Obrigatório para alocação e correção"></textarea></label><div class="form-actions"><button class="primary-button" type="submit">Confirmar movimentação</button></div></form></article>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+    <dialog class="login-dialog" id="login-dialog"><form class="login-card" id="login-form"><span class="kicker">GESTÃO DE ATIVOS</span><h1>Acessar inventário</h1><p>Entre com uma matrícula da equipe de T.I.</p><div class="form-grid"><label class="field"><span>Matrícula</span><input name="matricula" value="ADMIN-LOCAL" required /></label><label class="field"><span>Endereço da API</span><input name="apiUrl" value="http://localhost:8080/api" required /></label><div class="form-actions"><button class="primary-button" type="submit">Entrar</button></div></div></form></dialog>
+    <div class="toast-region" id="toast-region"></div><script src="../_shared/api.js"></script><script src="app.js"></script>
+  </body>
+</html>

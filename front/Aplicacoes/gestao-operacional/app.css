@@ -1,0 +1,13 @@
+:root { --accent: #805ad5; --navy: #1d1235; }
+.search-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.search-row input { min-height: 41px; padding: 0 11px; border: 1px solid #d8e1eb; border-radius: 8px; outline: none; }
+.person-card { margin-top: 16px; padding: 16px; border: 1px solid #ded7f1; border-radius: 11px; background: #faf8ff; }
+.person-card header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.person-card h3 { margin: 0; font-size: 13px; }
+.person-card p { margin: 4px 0 0; color: var(--muted); font-size: 9px; }
+.access-list { display: grid; gap: 6px; margin-top: 13px; }
+.access-item { padding: 9px 10px; border-radius: 8px; color: #584879; font-size: 9px; background: #f0ebfa; }
+.scope-hint { align-self: center; color: var(--muted); font-size: 9px; }
+.structure-tables { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; }
+.structure-tables h3 { margin: 0 0 10px; font-size: 11px; }
+@media (max-width: 760px) { .structure-tables { grid-template-columns: 1fr; } }

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#3b1e0c" /><title>Atendimento ITSM | GerenciamentoIT</title>
+    <link rel="stylesheet" href="../_shared/base.css" /><link rel="stylesheet" href="app.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="app-sidebar">
+        <div class="app-brand"><span class="brand-icon">IT</span><span><strong>Atendimento</strong><small>GerenciamentoIT</small></span></div>
+        <nav class="app-nav"><button class="active" data-view-target="home">Início</button><button data-view-target="new-ticket">Abrir chamado</button><button data-view-target="my-tickets">Meus chamados</button><a href="../index.html">Outras aplicações</a></nav>
+        <div class="app-sidebar-footer"><a href="../../Desenvolvimento_Portal/index.html">Abrir portal técnico</a></div>
+      </aside>
+      <main class="app-main">
+        <header class="app-topbar"><div class="page-context"><strong>Central de atendimento</strong><small>Solicitações e incidentes de T.I.</small></div><div class="user-cluster"><div class="current-user" id="current-user"></div><button class="icon-button" id="logout-button">↪</button></div></header>
+        <div class="app-content">
+          <section class="view active" data-view="home">
+            <div class="support-hero">
+              <div><span class="kicker">COMO PODEMOS AJUDAR?</span><h1>Conte com a T.I.</h1><p>Registre sua necessidade e acompanhe todas as atualizações em um só lugar.</p><button class="primary-button" data-open-ticket>Abrir novo chamado</button></div>
+              <div class="hero-mark">IT</div>
+            </div>
+            <div class="metric-grid"><article class="metric-card"><span>Meus chamados</span><strong id="ticket-total">—</strong></article><article class="metric-card"><span>Em aberto</span><strong id="ticket-open">—</strong></article><article class="metric-card"><span>Em atendimento</span><strong id="ticket-progress">—</strong></article><article class="metric-card"><span>Resolvidos</span><strong id="ticket-done">—</strong></article></div>
+            <article class="panel"><div class="panel-head"><div><h2>Chamados recentes</h2><p>Acompanhe rapidamente suas últimas solicitações.</p></div><button class="secondary-button" data-view-target="my-tickets">Ver todos</button></div><div id="recent-tickets" class="ticket-list"></div></article>
+          </section>
+
+          <section class="view" data-view="new-ticket">
+            <header class="page-head"><div><span class="kicker">NOVA SOLICITAÇÃO</span><h1>Como podemos ajudar?</h1><p>Descreva o problema com detalhes. Informe mensagens de erro e testes já realizados.</p></div></header>
+            <article class="panel ticket-form-panel">
+              <form class="form-grid" id="ticket-form">
+                <label class="field field--wide"><span>O que está acontecendo?</span><textarea name="descricao" placeholder="Exemplo: não consigo acessar o sistema desde esta manhã..." required></textarea></label>
+                <label class="field"><span>Telefone para contato</span><input name="telefoneContato" placeholder="(11) 99999-9999" /></label>
+                <label class="field"><span>Referência opcional</span><input name="identificadorExterno" placeholder="Número ou identificação relacionada" /></label>
+                <div class="form-actions"><button class="primary-button" type="submit">Enviar para a T.I.</button><button class="secondary-button" type="reset">Limpar</button></div>
+              </form>
+            </article>
+            <article class="success-ticket" id="ticket-success" hidden><span class="success-icon">✓</span><h2>Chamado aberto com sucesso</h2><p>Guarde o protocolo abaixo para acompanhamento.</p><strong id="created-protocol"></strong><button class="secondary-button" data-view-target="my-tickets">Acompanhar chamado</button></article>
+          </section>
+
+          <section class="view" data-view="my-tickets">
+            <header class="page-head"><div><span class="kicker">ACOMPANHAMENTO</span><h1>Meus chamados</h1><p>Consulte o andamento de tudo que você solicitou à T.I.</p></div><button class="primary-button" data-open-ticket>Novo chamado</button></header>
+            <article class="panel"><div class="ticket-toolbar"><input id="ticket-search" placeholder="Filtrar por protocolo ou descrição" /><button class="secondary-button" id="refresh-tickets">Atualizar</button></div><div id="ticket-list" class="ticket-list"></div></article>
+            <article class="panel ticket-detail" id="ticket-detail" hidden></article>
+          </section>
+        </div>
+      </main>
+    </div>
+    <dialog class="login-dialog" id="login-dialog"><form class="login-card" id="login-form"><span class="kicker">ATENDIMENTO ITSM</span><h1>Olá! Identifique-se</h1><p>Use sua matrícula para abrir e acompanhar seus chamados.</p><div class="form-grid"><label class="field"><span>Matrícula</span><input name="matricula" value="ADMIN-LOCAL" required /></label><label class="field"><span>Endereço da API</span><input name="apiUrl" value="http://localhost:8080/api" required /></label><div class="form-actions"><button class="primary-button" type="submit">Continuar</button></div></div></form></dialog>
+    <div class="toast-region" id="toast-region"></div><script src="../_shared/api.js"></script><script src="app.js"></script>
+  </body>
+</html>

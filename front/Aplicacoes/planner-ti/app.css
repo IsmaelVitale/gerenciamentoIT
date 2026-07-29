@@ -1,0 +1,32 @@
+:root { --accent: #d3486f; --navy: #35101d; }
+.local-warning { margin-bottom: 17px; padding: 11px 14px; border: 1px solid #f0d7df; border-radius: 9px; color: #8d4358; font-size: 9px; background: #fff7f9; }
+.kanban { display: grid; grid-template-columns: repeat(3, minmax(240px, 1fr)); gap: 12px; overflow-x: auto; }
+.kanban-column { min-height: 510px; padding: 13px; border: 1px solid var(--line); border-radius: 14px; background: #eef2f6; }
+.kanban-column header { display: flex; align-items: center; justify-content: space-between; padding: 4px 3px 14px; }
+.kanban-column h2 { margin: 0; font-size: 11px; }
+.kanban-column header span { display: grid; width: 23px; height: 23px; place-items: center; border-radius: 50%; color: #67768a; font-size: 8px; background: #dde4ec; }
+.task-card { margin-bottom: 8px; padding: 15px; border: 1px solid #dfe6ee; border-radius: 10px; background: #fff; box-shadow: 0 5px 12px rgb(28 47 73 / 5%); }
+.task-priority { display: inline-flex; padding: 4px 6px; border-radius: 5px; color: #6c7787; font-size: 7px; font-weight: 850; background: #edf1f5; }
+.task-priority.alta, .task-priority.urgente { color: #aa2941; background: #fde7eb; }
+.task-priority.media { color: #885d05; background: #fff0c9; }
+.task-card h3 { margin: 11px 0 7px; font-size: 11px; line-height: 1.45; }
+.task-card p { margin: 0 0 12px; color: var(--muted); font-size: 9px; line-height: 1.5; }
+.task-meta { display: flex; align-items: center; justify-content: space-between; color: #8491a1; font-size: 8px; }
+.task-actions { display: flex; justify-content: space-between; gap: 5px; margin-top: 12px; padding-top: 10px; border-top: 1px solid #edf1f5; }
+.task-actions button { min-height: 27px; padding: 0 8px; border: 1px solid #dce4ed; border-radius: 6px; color: #647286; font-size: 8px; background: #f9fafc; }
+.backlog-item { display: grid; grid-template-columns: auto 1fr 120px 90px auto; align-items: center; gap: 14px; padding: 14px 8px; border-bottom: 1px solid #e8edf3; }
+.backlog-item:last-child { border-bottom: 0; }
+.backlog-item strong, .backlog-item small { display: block; }
+.backlog-item strong { font-size: 10px; }
+.backlog-item small { margin-top: 3px; color: var(--muted); font-size: 8px; }
+.progress-chart { display: grid; gap: 14px; }
+.progress-row { display: grid; grid-template-columns: 120px 1fr 30px; align-items: center; gap: 12px; color: #5c6a7d; font-size: 9px; }
+.progress-track { height: 9px; overflow: hidden; border-radius: 999px; background: #edf1f5; }
+.progress-track span { display: block; height: 100%; border-radius: inherit; background: var(--accent); }
+.task-dialog { width: min(650px, calc(100vw - 32px)); padding: 0; border: 0; border-radius: 17px; box-shadow: 0 28px 80px rgb(14 24 38 / 28%); }
+.task-dialog::backdrop { background: rgb(3 16 34 / 62%); }
+.task-dialog-card { padding: 28px; }
+.task-dialog-card header { position: relative; margin-bottom: 22px; }
+.task-dialog-card h2 { margin: 8px 0 0; }
+.task-dialog-card header button { position: absolute; top: 0; right: 0; border: 0; color: #778598; font-size: 24px; background: transparent; }
+@media (max-width: 700px) { .kanban { grid-template-columns: repeat(3, 260px); } .backlog-item { grid-template-columns: 1fr; } }

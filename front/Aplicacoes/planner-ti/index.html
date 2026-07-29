@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#35101d" /><title>Planner da T.I. | GerenciamentoIT</title>
+    <link rel="stylesheet" href="../_shared/base.css" /><link rel="stylesheet" href="app.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="app-sidebar">
+        <div class="app-brand"><span class="brand-icon">PLN</span><span><strong>Planner da T.I.</strong><small>GerenciamentoIT</small></span></div>
+        <nav class="app-nav"><button class="active" data-view-target="board">Quadro</button><button data-view-target="backlog">Backlog</button><button data-view-target="overview">Indicadores</button><a href="../index.html">Outras aplicações</a></nav>
+        <div class="app-sidebar-footer"><a href="../../Desenvolvimento_Portal/index.html">Abrir portal técnico</a></div>
+      </aside>
+      <main class="app-main">
+        <header class="app-topbar"><div class="page-context"><strong>Planejamento da equipe</strong><small>Prioridades e entregas</small></div><div class="user-cluster"><div class="current-user" id="current-user"></div><button class="icon-button" id="logout-button">↪</button></div></header>
+        <div class="app-content">
+          <div class="local-warning">Protótipo local: as tarefas ficam apenas neste navegador até a criação dos endpoints do Planner.</div>
+          <section class="view active" data-view="board">
+            <header class="page-head"><div><span class="kicker">SPRINT ATUAL</span><h1>Quadro da equipe</h1><p>Visualize o fluxo de trabalho e mova as tarefas conforme a execução.</p></div><button class="primary-button" id="new-task-button">Nova tarefa</button></header>
+            <div class="kanban" id="kanban-board"></div>
+          </section>
+          <section class="view" data-view="backlog">
+            <header class="page-head"><div><span class="kicker">PRÓXIMOS TRABALHOS</span><h1>Backlog</h1><p>Itens ainda não iniciados, organizados por prioridade.</p></div><button class="primary-button" id="new-backlog-button">Adicionar item</button></header>
+            <article class="panel"><div id="backlog-list"></div></article>
+          </section>
+          <section class="view" data-view="overview">
+            <header class="page-head"><div><span class="kicker">DESEMPENHO</span><h1>Indicadores</h1><p>Resumo visual do trabalho registrado neste protótipo.</p></div></header>
+            <div class="metric-grid"><article class="metric-card"><span>Total de tarefas</span><strong id="metric-total">0</strong></article><article class="metric-card"><span>Em andamento</span><strong id="metric-progress">0</strong></article><article class="metric-card"><span>Concluídas</span><strong id="metric-done">0</strong></article><article class="metric-card"><span>Urgentes</span><strong id="metric-urgent">0</strong></article></div>
+            <article class="panel"><div class="panel-head"><div><h2>Distribuição do trabalho</h2><p>Quantidade de itens em cada etapa.</p></div></div><div class="progress-chart" id="progress-chart"></div></article>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <dialog class="task-dialog" id="task-dialog">
+      <form class="task-dialog-card" id="task-form"><header><span class="kicker">PLANEJAMENTO</span><h2>Nova tarefa</h2><button type="button" id="close-task-dialog">×</button></header><div class="form-grid"><label class="field field--wide"><span>Título</span><input name="titulo" required /></label><label class="field"><span>Responsável</span><input name="responsavel" /></label><label class="field"><span>Prioridade</span><select name="prioridade"><option>BAIXA</option><option selected>MEDIA</option><option>ALTA</option><option>URGENTE</option></select></label><label class="field"><span>Prazo</span><input name="prazo" type="date" /></label><label class="field"><span>Etapa inicial</span><select name="status"><option value="BACKLOG">Backlog</option><option value="A_FAZER">A fazer</option><option value="EM_ANDAMENTO">Em andamento</option></select></label><label class="field field--wide"><span>Descrição</span><textarea name="descricao"></textarea></label><div class="form-actions"><button class="primary-button" type="submit">Criar tarefa</button></div></div></form>
+    </dialog>
+    <dialog class="login-dialog" id="login-dialog"><form class="login-card" id="login-form"><span class="kicker">PLANNER DA T.I.</span><h1>Acessar planejamento</h1><p>Entre com uma matrícula da equipe de T.I.</p><div class="form-grid"><label class="field"><span>Matrícula</span><input name="matricula" value="ADMIN-LOCAL" required /></label><label class="field"><span>Endereço da API</span><input name="apiUrl" value="http://localhost:8080/api" required /></label><div class="form-actions"><button class="primary-button" type="submit">Entrar</button></div></div></form></dialog>
+    <div class="toast-region" id="toast-region"></div><script src="../_shared/api.js"></script><script src="app.js"></script>
+  </body>
+</html>
