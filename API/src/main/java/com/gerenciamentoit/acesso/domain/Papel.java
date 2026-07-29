@@ -7,7 +7,10 @@ import java.util.Set;
 import static com.gerenciamentoit.acesso.domain.Permissao.*;
 
 public enum Papel {
-    USUARIO(EnumSet.noneOf(Permissao.class)),
+    USUARIO(EnumSet.of(
+            CHAMADO_ABRIR,
+            CHAMADO_VISUALIZAR_PROPRIO
+    )),
 
     LIDER(EnumSet.of(
             SETOR_VISUALIZAR,
@@ -16,7 +19,9 @@ public enum Papel {
             USUARIO_VISUALIZAR,
             USUARIO_ATRIBUIR_ACESSO,
             TIPO_ATIVO_VISUALIZAR,
-            ATIVO_VISUALIZAR
+            ATIVO_VISUALIZAR,
+            CHAMADO_ABRIR,
+            CHAMADO_VISUALIZAR_PROPRIO
     )),
 
     SUPERVISOR(EnumSet.of(
@@ -28,7 +33,9 @@ public enum Papel {
             USUARIO_VISUALIZAR,
             USUARIO_ATRIBUIR_ACESSO,
             TIPO_ATIVO_VISUALIZAR,
-            ATIVO_VISUALIZAR
+            ATIVO_VISUALIZAR,
+            CHAMADO_ABRIR,
+            CHAMADO_VISUALIZAR_PROPRIO
     )),
 
     ANALISTA_TI(EnumSet.of(
@@ -40,7 +47,9 @@ public enum Papel {
             ATIVO_CADASTRAR,
             ATIVO_VISUALIZAR,
             ATIVO_LIBERAR,
-            ATIVO_CORRIGIR_IDENTIFICACAO
+            ATIVO_CORRIGIR_IDENTIFICACAO,
+            CHAMADO_ABRIR,
+            CHAMADO_VISUALIZAR_PROPRIO
     )),
 
     GESTOR_TI(EnumSet.allOf(Permissao.class));

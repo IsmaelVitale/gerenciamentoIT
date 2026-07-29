@@ -5,8 +5,10 @@ const qrcode = require('qrcode-terminal');
 const { Client, LocalAuth } = require('whatsapp-web.js');
 
 const apiBaseUrl = (process.env.API_BASE_URL || 'http://localhost:8080/api').replace(/\/$/, '');
-const apiTimeoutMs = Number(process.env.API_TIMEOUT_MS || 10000);
+const apiTimeoutMs = positiveInteger(process.env.API_TIMEOUT_MS, 10000);
+const pendingTicketTtlMs = positiveInteger(process.env.PENDING_TICKET_TTL_MS, 300000);
 const simulationMode = String(process.env.SIMULATION_MODE || 'true').toLowerCase() === 'true';
+const pendingTickets = new Map();
 
 const api = axios.create({
     baseURL: apiBaseUrl,
@@ -53,10 +55,34 @@ client.on('message', async (message) => {
     }
 
     const originalText = message.body.trim();
+    if (!originalText) {
+        return;
+    }
+
     const normalizedText = originalText.toLowerCase();
+    cleanupExpiredPendingTickets();
+
+    if (isGroupMessage(message.from)) {
+        if (isTicketCommand(normalizedText) || isHelpCommand(normalizedText)) {
+            await message.reply('Por privacidade, abra o chamado em uma conversa direta com o bot.');
+        }
+        return;
+    }
+
+    if (isCancelCommand(normalizedText)) {
+        const removed = pendingTickets.delete(message.from);
+        await message.reply(removed ? 'Solicitacao cancelada.' : 'Nao existe solicitacao pendente.');
+        return;
+    }
 
     if (isHelpCommand(normalizedText)) {
         await message.reply(buildHelpMenu());
+        return;
+    }
+
+    const pendingTicket = pendingTickets.get(message.from);
+    if (pendingTicket && !isTicketCommand(normalizedText)) {
+        await completePendingTicket(message, originalText, pendingTicket);
         return;
     }
 
@@ -65,7 +91,6 @@ client.on('message', async (message) => {
     }
 
     const description = originalText.replace(/^!?chamado\b\s*/i, '').trim();
-
     if (!description) {
         await message.reply(
             'Descreva o problema. Exemplo: *chamado leitor de codigo de barras travado*',
@@ -73,7 +98,16 @@ client.on('message', async (message) => {
         return;
     }
 
-    await openTicket(message, description);
+    pendingTickets.set(message.from, {
+        description,
+        externalMessageId: serializedMessageId(message),
+        expiresAt: Date.now() + pendingTicketTtlMs,
+    });
+
+    await message.reply(
+        'Para vincular o chamado ao seu cadastro, informe agora a sua *matricula*.\n' +
+        'Envie *cancelar* para desistir.',
+    );
 });
 
 function isTicketCommand(text) {
@@ -84,61 +118,164 @@ function isHelpCommand(text) {
     return ['ajuda', '!ajuda', 'menu', '!menu'].includes(text);
 }
 
+function isCancelCommand(text) {
+    return ['cancelar', '!cancelar'].includes(text);
+}
+
+function isGroupMessage(messageFrom) {
+    return messageFrom.endsWith('@g.us');
+}
+
 function buildHelpMenu() {
     return [
         '🤖 *Central de Suporte de TI*',
         '',
-        'Comandos disponíveis:',
-        '- *chamado [descrição]* — abre um novo chamado',
+        'Comandos disponiveis:',
+        '- *chamado [descricao]* — inicia a abertura de um chamado',
+        '- *cancelar* — cancela a solicitacao pendente',
         '- *ajuda* — mostra este menu',
+        '',
+        'Depois da descricao, o bot solicitara sua matricula.',
     ].join('\n');
 }
 
-async function openTicket(message, description) {
+async function completePendingTicket(message, matriculaInformada, pendingTicket) {
+    if (Date.now() > pendingTicket.expiresAt) {
+        pendingTickets.delete(message.from);
+        await message.reply('A solicitacao expirou. Envie novamente *chamado [descricao]*.');
+        return;
+    }
+
+    const matricula = matriculaInformada.trim();
+    if (!matricula || matricula.length > 80) {
+        await message.reply('Informe uma matricula valida ou envie *cancelar*.');
+        return;
+    }
+
+    pendingTickets.delete(message.from);
+    await message.reply('🔄 Validando sua matricula e registrando o chamado...');
+
+    if (simulationMode) {
+        console.log('Chamado simulado:', {
+            description: pendingTicket.description,
+            externalMessageId: pendingTicket.externalMessageId,
+        });
+        await message.reply(
+            '✅ Chamado recebido em modo de simulacao. Nenhum registro foi criado na API.',
+        );
+        return;
+    }
+
+    let token;
     try {
-        await message.reply('🔄 Registrando seu chamado no sistema...');
-
-        const payload = {
-            telefoneUsuario: normalizePhone(message.from),
-            problema: description,
-            origem: 'WHATSAPP',
-            identificadorMensagem: message.id?._serialized || null,
-        };
-
-        if (simulationMode) {
-            console.log('Chamado simulado:', payload);
-            await message.reply(
-                '✅ Chamado recebido em modo de simulação. A integração real será ativada quando a API de chamados estiver disponível.',
-            );
-            return;
+        const sessionResponse = await api.post('/v1/sessoes', {
+            matricula,
+            origemAplicacao: 'WHATSAPP',
+        });
+        token = sessionResponse.data?.token;
+        if (!token) {
+            throw new Error('A API nao retornou o token da sessao.');
         }
 
-        const response = await api.post('/api/v1/chamados', payload);
-        const protocol = response.data?.protocolo || response.data?.id;
-
+        const phone = await resolvePhone(message);
+        const response = await api.post(
+            '/v1/chamados',
+            {
+                descricao: pendingTicket.description,
+                telefoneContato: phone,
+                identificadorExterno: pendingTicket.externalMessageId,
+            },
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Idempotency-Key': pendingTicket.externalMessageId,
+                },
+            },
+        );
+        const protocol = response.data?.protocolo;
         if (!protocol) {
-            throw new Error('A API nao retornou protocolo ou id do chamado.');
+            throw new Error('A API nao retornou o protocolo do chamado.');
         }
 
         await message.reply(`✅ Chamado *#${protocol}* aberto com sucesso!`);
     } catch (error) {
-        const status = error.response?.status;
-        const detail = error.response?.data?.detail || error.response?.data?.message;
+        const apiCode = error.response?.data?.codigo;
+        const apiMessage = error.response?.data?.mensagem;
 
         console.error('Erro ao abrir chamado:', {
             message: error.message,
-            status,
-            detail,
+            status: error.response?.status,
+            apiCode,
+            apiMessage,
         });
 
+        if (apiCode === 'MATRICULA_NAO_ENCONTRADA') {
+            restorePendingTicket(message.from, pendingTicket);
+            await message.reply('❌ Matricula nao encontrada. Confira o valor ou envie *cancelar*.');
+            return;
+        }
+        if (apiCode === 'USUARIO_INATIVO') {
+            await message.reply('❌ Seu cadastro esta inativo. Procure a equipe de T.I.');
+            return;
+        }
+
+        restorePendingTicket(message.from, pendingTicket);
         await message.reply(
-            '❌ Não foi possível registrar o chamado agora. Tente novamente mais tarde.',
+            '❌ Nao foi possivel registrar o chamado agora. Tente informar a matricula novamente ou envie *cancelar*.',
         );
+    } finally {
+        if (token) {
+            await revokeSession(token);
+        }
     }
 }
 
-function normalizePhone(messageFrom) {
-    return messageFrom.replace(/@c\.us$/, '');
+function restorePendingTicket(chatId, pendingTicket) {
+    if (Date.now() <= pendingTicket.expiresAt) {
+        pendingTickets.set(chatId, pendingTicket);
+    }
+}
+
+async function resolvePhone(message) {
+    try {
+        const contact = await message.getContact();
+        const phone = String(contact?.number || '').replace(/\D/g, '');
+        return phone || null;
+    } catch (error) {
+        console.warn('Nao foi possivel identificar o telefone de contato:', error.message);
+        const fallback = String(message.from || '').replace(/\D/g, '');
+        return fallback || null;
+    }
+}
+
+async function revokeSession(token) {
+    try {
+        await api.delete('/v1/sessoes/atual', {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+    } catch (error) {
+        console.warn('Nao foi possivel revogar a sessao temporaria:', error.message);
+    }
+}
+
+function serializedMessageId(message) {
+    return message.id?._serialized || `whatsapp-${Date.now()}`;
+}
+
+function cleanupExpiredPendingTickets() {
+    const now = Date.now();
+    for (const [chatId, pendingTicket] of pendingTickets.entries()) {
+        if (pendingTicket.expiresAt < now) {
+            pendingTickets.delete(chatId);
+        }
+    }
+}
+
+function positiveInteger(value, fallback) {
+    const parsed = Number(value);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 
 async function shutdown(signal) {
@@ -149,6 +286,12 @@ async function shutdown(signal) {
         process.exit(0);
     }
 }
+
+const cleanupTimer = setInterval(
+    cleanupExpiredPendingTickets,
+    Math.min(pendingTicketTtlMs, 60000),
+);
+cleanupTimer.unref();
 
 process.on('SIGINT', () => shutdown('SIGINT'));
 process.on('SIGTERM', () => shutdown('SIGTERM'));
