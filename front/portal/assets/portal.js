@@ -132,6 +132,7 @@
           '" href="' +
           rootPath +
           item.file +
+          Api.navigationHash() +
           '">' +
           '<span class="nav-monogram" style="--app-accent:' +
           item.accent +
@@ -159,7 +160,9 @@
       (page === 'home' ? 'nav-item--active' : '') +
       '" href="' +
       rootPath +
-      'index.html"><span class="nav-icon">' +
+      'index.html' +
+      Api.navigationHash() +
+      '"><span class="nav-icon">' +
       icon('grid') +
       '</span><span><strong>Visão geral</strong><small>Central de testes</small></span></a>' +
       '<p class="nav-label">APLICAÇÕES</p>' +
@@ -316,6 +319,7 @@
             '<a class="app-card" href="' +
             rootPath +
             item.file +
+            Api.navigationHash() +
             '" style="--app-accent:' +
             item.accent +
             '"><div class="card-top"><span class="card-index">' +
@@ -1182,7 +1186,7 @@
     Promise.allSettled([loadSectors('sectors-output'), loadShifts('shifts-output')]);
   }
   if (page === 'gestao-ativos' && Api.getToken()) {
-    Promise.allSettled([loadAssetTypes('asset-types-output'), loadSectors('asset-operation-output')]);
+    Promise.allSettled([loadAssetTypes('asset-types-output'), loadSectors(null)]);
   }
   if (page === 'hub-pdas' && Api.getToken()) {
     loadContexts('contexts-output').catch(function () {});

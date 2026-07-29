@@ -74,6 +74,50 @@
     window.dispatchEvent(new CustomEvent('git:session-changed'));
   }
 
+  function navigationHash() {
+    var session = getSession();
+    var token = getToken();
+    if (!session || !token) return '';
+
+    return (
+      '#git-session=' +
+      encodeURIComponent(
+        JSON.stringify({
+          apiUrl: getBaseUrl(),
+          token: token,
+          session: session
+        })
+      )
+    );
+  }
+
+  function importNavigationHash() {
+    var prefix = '#git-session=';
+    if (window.location.hash.indexOf(prefix) !== 0) return;
+
+    try {
+      var payload = JSON.parse(
+        decodeURIComponent(window.location.hash.slice(prefix.length))
+      );
+      if (payload.apiUrl) setBaseUrl(payload.apiUrl);
+      if (payload.token && payload.session) {
+        storageSet(STORAGE.token, payload.token);
+        storageSet(STORAGE.session, JSON.stringify(payload.session));
+      }
+      try {
+        window.history.replaceState(
+          null,
+          document.title,
+          window.location.pathname + window.location.search
+        );
+      } catch (_) {
+        // Alguns navegadores não permitem replaceState em file://.
+      }
+    } catch (_) {
+      // Um hash inválido é ignorado e a página continua utilizável.
+    }
+  }
+
   function createCorrelationId() {
     if (window.crypto && window.crypto.randomUUID) {
       return window.crypto.randomUUID();
@@ -220,6 +264,9 @@
     setBaseUrl: setBaseUrl,
     getToken: getToken,
     getSession: getSession,
-    clearSession: clearSession
+    clearSession: clearSession,
+    navigationHash: navigationHash
   };
+
+  importNavigationHash();
 })();

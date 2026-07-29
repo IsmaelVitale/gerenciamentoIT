@@ -26,7 +26,9 @@ Não é necessário executar nenhum comando no terminal para abrir o portal.
 
 ## Sessão compartilhada
 
-O endereço da API, o token e os dados da sessão ficam no armazenamento local do navegador. Após entrar em uma página, a mesma sessão é reutilizada nas demais.
+O endereço da API, o token e os dados da sessão ficam no armazenamento local do navegador. Como alguns navegadores isolam esse armazenamento por arquivo em `file://`, os links do menu transportam a sessão para a próxima página e a gravam novamente no destino.
+
+Evite copiar ou compartilhar o endereço exibido na barra durante a troca de página, pois ele pode conter temporariamente o token local. O portal remove esse trecho do endereço após importá-lo quando o navegador permite.
 
 A API continua sendo a responsável por validar as permissões. Um botão visível no portal não contorna uma resposta `403`.
 
