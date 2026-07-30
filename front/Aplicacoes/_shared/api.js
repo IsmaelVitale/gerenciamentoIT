@@ -46,6 +46,54 @@
     }
   }
 
+  function roles() {
+    var current = session();
+    return current && current.usuario && Array.isArray(current.usuario.papeis)
+      ? current.usuario.papeis
+      : [];
+  }
+
+  function permissions() {
+    var current = session();
+    return current && current.usuario && Array.isArray(current.usuario.permissoes)
+      ? current.usuario.permissoes
+      : [];
+  }
+
+  function hasRole(role) {
+    return roles().indexOf(role) >= 0;
+  }
+
+  function hasPermission(permission) {
+    return permissions().indexOf(permission) >= 0;
+  }
+
+  function roleLabel(user) {
+    var userRoles = user && Array.isArray(user.papeis) ? user.papeis : [];
+    if (userRoles.indexOf('GESTOR_TI') >= 0) return 'T.I. · Gestor';
+    if (userRoles.indexOf('ANALISTA_TI') >= 0) return 'T.I. · Analista';
+    if (userRoles.indexOf('SUPERVISOR') >= 0) return 'Supervisor';
+    if (userRoles.indexOf('LIDER') >= 0) return 'Líder';
+    return 'Usuário';
+  }
+
+  function applyAccessRules(user) {
+    var userPermissions = user && Array.isArray(user.permissoes) ? user.permissoes : [];
+    var userRoles = user && Array.isArray(user.papeis) ? user.papeis : [];
+
+    document.querySelectorAll('[data-permission]').forEach(function (element) {
+      var required = element.dataset.permission.split(',').map(function (item) { return item.trim(); });
+      var allowed = required.some(function (permission) { return userPermissions.indexOf(permission) >= 0; });
+      element.hidden = !allowed;
+    });
+
+    document.querySelectorAll('[data-roles]').forEach(function (element) {
+      var required = element.dataset.roles.split(',').map(function (item) { return item.trim(); });
+      var allowed = required.some(function (role) { return userRoles.indexOf(role) >= 0; });
+      element.hidden = !allowed;
+    });
+  }
+
   function correlationId() {
     return window.crypto && window.crypto.randomUUID
       ? window.crypto.randomUUID()
@@ -188,9 +236,11 @@
       var user = current && current.usuario;
       if (userArea) {
         userArea.innerHTML = user
-          ? '<strong>' + escape(user.nome) + '</strong><small>' + escape(user.matricula) + '</small>'
+          ? '<strong>' + escape(user.nome) + '</strong><small>' + escape(roleLabel(user)) + ' · ' + escape(user.matricula) + '</small>'
           : '<strong>Sem sessão</strong><small>Entre para continuar</small>';
       }
+      document.body.dataset.authenticated = user ? 'true' : 'false';
+      applyAccessRules(user);
       if (!user && dialog && !dialog.open) dialog.showModal();
       if (user && config.onReady) config.onReady(user);
     }
@@ -238,6 +288,11 @@
     auth: auth,
     session: session,
     token: token,
-    apiUrl: apiUrl
+    apiUrl: apiUrl,
+    roles: roles,
+    permissions: permissions,
+    hasRole: hasRole,
+    hasPermission: hasPermission,
+    roleLabel: roleLabel
   };
 })();

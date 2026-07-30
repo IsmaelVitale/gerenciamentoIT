@@ -1,5 +1,5 @@
-:root { --accent: #d3486f; --navy: #35101d; }
-.local-warning { margin-bottom: 17px; padding: 11px 14px; border: 1px solid #f0d7df; border-radius: 9px; color: #8d4358; font-size: 9px; background: #fff7f9; }
+:root { --accent: #2563eb; --navy: #0f172a; }
+.local-warning { margin-bottom: 20px; padding: 12px 14px; border: 1px solid #fde68a; border-left: 4px solid #f59e0b; border-radius: 9px; color: #92400e; font-size: 10px; background: #fffbeb; }
 .kanban { display: grid; grid-template-columns: repeat(3, minmax(240px, 1fr)); gap: 12px; overflow-x: auto; }
 .kanban-column { min-height: 510px; padding: 13px; border: 1px solid var(--line); border-radius: 14px; background: #eef2f6; }
 .kanban-column header { display: flex; align-items: center; justify-content: space-between; padding: 4px 3px 14px; }
